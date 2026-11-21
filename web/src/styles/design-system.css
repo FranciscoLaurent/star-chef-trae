@@ -1528,3 +1528,20 @@ footer{
 }
 .ai-foot-tag{padding:4px 10px;border:1px solid var(--rule-strong);border-radius:99px;color:var(--vermillion)}
 @media(max-width:680px){.ai-settings-btn{left:auto;right:18px;bottom:80px;width:40px;height:40px}}
+
+/* ============ Round 2 增补（B4 跨派角标 / A10 焦点可见性） ============ */
+/* B4：中栏人卡跨派师承 ※ 角标 —— 师傅菜系与本人不同时右上角上标，朱砂 */
+.person-card .pc-cross{
+  position:absolute;top:2px;right:6px;
+  font-family:var(--serif);font-size:12px;line-height:1;font-weight:600;
+  color:var(--vermillion);pointer-events:none;
+}
+/* B4：右栏跨派学艺注 —— ChefProfile 师承脉络区上方的补充一句，视觉承接 ld-cross 的朱砂虚线 */
+.ped-cross-note{
+  margin-bottom:16px;padding:10px 13px;
+  border:1px dashed rgba(184,50,26,.55);border-radius:4px;
+  background:rgba(184,50,26,.05);
+  font-family:var(--serif);font-size:13px;line-height:1.6;color:var(--ink);
+}
+/* A10：键盘操作时焦点全局可见（朱砂轮廓；鼠标点击不触发 :focus-visible） */
+:focus-visible{outline:2px solid var(--vermillion);outline-offset:2px}

@@ -92,6 +92,12 @@ export default function LineagePage() {
   const openChef = (id: string) => {
     setSelectedId(id);
     swapFade(document.querySelector('.ped-detail'));
+    // B2：窄屏（≤860px，三栏折叠为单列的既有断点）详情面板在中栏下方，点人卡后滚进视口；桌面三栏并排不滚动
+    if (window.matchMedia('(max-width: 860px)').matches) {
+      requestAnimationFrame(() => {
+        document.querySelector('.ped-detail')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    }
     const path = `/chef/${id}`;
     if (window.location.pathname !== path) {
       window.history.pushState({ chefPreview: id }, '', path);
@@ -137,6 +143,20 @@ export default function LineagePage() {
     };
   }, [data, selected]);
 
+  // B4：跨派师承判定 —— 按师傅名查实体（derived 占位也在 chefs 表内），查不到或师傅菜系未知则跳过，不猜
+  const crossOf = useMemo(() => {
+    if (!data) return null;
+    const byName = new Map<string, Chef>();
+    for (const c of data.chefs) if (!byName.has(c.name)) byName.set(c.name, c);
+    return (chef: Chef): Chef | null => {
+      if (!chef.cuisine) return null;
+      const masterName = chef.master || chef.masters[0] || null;
+      if (!masterName) return null;
+      const m = byName.get(masterName);
+      return m && m.cuisine && m.cuisine !== chef.cuisine ? m : null;
+    };
+  }, [data]);
+
   useStaggerIn('.gen-row .person-card', [filtered.length, familyKey]);
 
   if (loading) return <div className="lineage-wrap"><div className="loading" style={{ paddingTop: 80 }}>正在绘制宗谱…</div></div>;
@@ -158,6 +178,8 @@ export default function LineagePage() {
       chainInfo.disciples.length > 0 ? `门下 ${chainInfo.disciples.length} 人` : null,
     ].filter(Boolean).join(' · ')
     : null;
+  // B4：右栏跨派学艺注（仅当师傅实体菜系与本人不同时显示）
+  const selectedCross = selected && crossOf ? crossOf(selected) : null;
 
   return (
     <div className="lineage-wrap page-enter">
@@ -237,7 +259,7 @@ export default function LineagePage() {
           {/* B1 选中链胶囊 + C1 一次性图例（全谱仅此一处，不逐卡解释） */}
           <div className="ped-chain-row">
             {chainPill && <span className="ped-chain-pill">{chainPill}</span>}
-            <span className="ped-legend">「待补」徽标 = 管线自动生成的占位档案</span>
+            <span className="ped-legend">「待补」= 占位档案</span>
           </div>
 
           {filtered.length === 0 && (
@@ -263,7 +285,10 @@ export default function LineagePage() {
                   {shown.map(c => (
                     <div key={c.id}
                       className={`person-card ${chainInfo?.chainIds.has(c.id) ? 'in-chain' : ''} ${selected?.id === c.id ? 'active' : ''}`}
-                      onClick={() => openChef(c.id)}>
+                      tabIndex={0}
+                      onClick={() => openChef(c.id)}
+                      onKeyDown={e => { if (e.key === 'Enter') openChef(c.id); }}>
+                      {crossOf && crossOf(c) && <span className="pc-cross" aria-hidden="true">※</span>}
                       <div className="pc-portrait">
                         {c.portrait && (
                           <img src={c.portrait} alt="" loading="lazy"
@@ -288,6 +313,11 @@ export default function LineagePage() {
 
         {/* 右栏：人物详情 */}
         <aside className="ped-detail">
+          {selected && selectedCross && (
+            <div className="ped-cross-note">
+              跨菜系学艺：{selectedCross.name}（{selectedCross.cuisine}菜）→ {selected.name}（{selected.cuisine}菜）
+            </div>
+          )}
           {selected ? (
             <ChefProfile variant="drawer" chef={selected} data={data} onSelect={openChef} />
           ) : (

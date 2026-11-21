@@ -417,6 +417,12 @@ export default function AssistantPage() {
               <div className="ao-actions">
                 <button className="primary" onClick={async () => {
                   if (!profile) return;
+                  // 空档案拦截：姓名/菜系/年限/意向全空 = 未生成有效档案，提示而非复制
+                  const intentEmpty = !profile.intent.position && !profile.intent.city && !profile.intent.salary;
+                  if (!profile.name && !profile.cuisine && profile.years == null && intentEmpty) {
+                    flash('请先生成求职档案');
+                    return;
+                  }
                   // 真实闭环：档案纯文本复制到剪贴板，老师傅可请人粘贴投递
                   const ok = await copyTextToClipboard(buildProfileText(profile));
                   flash(ok ? '已复制求职档案到剪贴板，可粘贴给雇主或招聘方' : '复制失败，请手动选择文本复制');

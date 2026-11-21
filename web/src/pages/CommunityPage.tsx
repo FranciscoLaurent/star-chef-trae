@@ -77,7 +77,9 @@ export default function CommunityPage() {
 
       <div className="comm-grid">
         {filtered.map(p => (
-          <article key={p.id} className="post-card" onClick={() => setDetail(p)}>
+          <article key={p.id} className="post-card" tabIndex={0}
+            onClick={() => setDetail(p)}
+            onKeyDown={e => { if (e.key === 'Enter') setDetail(p); }}>
             <div className="post-head">
               <div className="post-avatar">{p.author.slice(0, 1)}</div>
               <div>
