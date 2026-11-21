@@ -25,7 +25,7 @@ export default function HomePage() {
         <div className="hero-meta">
           <div>平台愿景 <span>让手艺被看见</span></div>
           <div>核心能力 <span>师承网络 · 智能匹配 · 就业机会</span></div>
-          <div>平台定位 <span>厨师专属职业平台</span></div>
+          <div>公益切口 <span>帮不擅文书的老师傅，把口述经历变成能投出的档案</span></div>
           <div>数据底座 <span>{meta ? `${meta.total.toLocaleString()} 位厨师 · ${meta.cuisines} 菜系` : '加载中…'}</span></div>
         </div>
 
@@ -54,7 +54,7 @@ export default function HomePage() {
 
         <div className="hero-grid">
           <p className="hero-lead reveal">
-            星厨传承为两千万中国厨师建立一个<b>以师承关系为信任网络</b>的职业平台。
+            星厨传承为上千万中国厨师建立一个<b>以师承关系为信任网络</b>的职业平台。
             <em>数字师承谱</em>记录手艺出处，<em>智能招聘匹配</em>创造真实就业机会。
           </p>
           <div className="hero-side reveal">

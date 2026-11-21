@@ -15,7 +15,8 @@ interface Pick {
   photoCount: number;
 }
 
-/** 选取展示主角：徒弟中真实照片最多者（≥2 张），其次师傅本人有照片者优先 */
+/** 选取展示主角：徒弟真实照片数（≥2 张）为主，师傅本人有照片强加权——
+ *  避免「本人无照的大众名」凭徒弟数量压过「本人有照且徒弟全照」的更完整样本 */
 function pickLineage(data: WebData): Pick | null {
   const byId = new Map(data.chefs.map(c => [c.id, c] as const));
   let best: (Pick & { score: number }) | null = null;
@@ -33,7 +34,7 @@ function pickLineage(data: WebData): Pick | null {
       );
     const photoCount = disciples.filter(d => d.portrait && !d.derived).length;
     if (photoCount < 2) continue;
-    const score = photoCount * 2 + (master.portrait ? 1 : 0);
+    const score = photoCount * 2 + (master.portrait ? 5 : 0);
     if (!best || score > best.score) best = { master, disciples, photoCount, score };
   }
   return best;
@@ -59,9 +60,12 @@ export default function RealLineagePreview() {
   ].filter(Boolean).join(' · ');
 
   // 连线：列中心与徒弟网格严格对齐（6 列 = 列宽 15% + 列距 2% → 中心 7.5 + 17i）
+  // 横杠端点至少延伸到中线 50，杜绝徒弟不足 4 列时横杠右端悬空在中线左侧
   const centers = shown.map((_, i) => 7.5 + 17 * i);
+  const barLeft = Math.min(...centers, 50);
+  const barRight = Math.max(...centers, 50);
   const path =
-    `M 50 0 L 50 30 M ${centers[0]} 30 H ${centers[centers.length - 1]} ` +
+    `M 50 0 L 50 30 M ${barLeft} 30 H ${barRight} ` +
     centers.map(x => `M ${x} 30 L ${x} 60`).join(' ');
 
   return (
@@ -74,7 +78,7 @@ export default function RealLineagePreview() {
 
       <div className="rlp-board">
         <Link to={`/chef/${master.id}`} className="rlp-master">
-          <div className="rlp-photo">
+          <div className="rlp-photo rlp-photo--master">
             {master.portrait && (
               <img src={master.portrait} alt={master.name} loading="lazy"
                 onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />

@@ -826,6 +826,14 @@ section{
   .rlp-disciples{grid-template-columns:repeat(2,1fr)}
 }
 
+/* ============ RLP 增补 · 批次3（B7 徒弟名 hover / B9 主角钢印层级） ============ */
+/* B7：徒弟名 hover 朱砂下划线（整卡为链接，悬停即提示可点） */
+.rlp-disciple:hover .rlp-d-name{text-decoration:underline;text-decoration-color:var(--vermillion);text-decoration-thickness:1.5px;text-underline-offset:4px}
+
+/* B9：师承链主角钢印层级 —— 印泥朱砂浅底 + 外框/内圈双描边，与徒弟拉开层级 */
+.rlp-photo--master{background:rgba(184,50,26,.07);border-color:var(--vermillion);box-shadow:5px 5px 0 rgba(184,50,26,.16)}
+.rlp-photo--master::after{content:'';position:absolute;inset:4px;border:1px solid rgba(184,50,26,.45);z-index:3;pointer-events:none}
+
 /* ============================================================
    Footer
    ============================================================ */

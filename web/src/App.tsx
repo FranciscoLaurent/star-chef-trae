@@ -58,7 +58,10 @@ export default function App() {
           </div>
         </div>
         <div className="foot-bottom">
-          <div>© 2026 星厨传承 · 参赛作品</div>
+          <div>
+            <div>© 2026 星厨传承 · 参赛作品</div>
+            <div style={{ marginTop: 4 }}>Built with TRAE · 星厨传承以 TRAE 对话式构建</div>
+          </div>
           <div>Designed with Fraunces, Instrument Sans &amp; JetBrains Mono</div>
           <div><a href="#top">Back to top ↑</a></div>
         </div>
