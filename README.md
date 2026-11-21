@@ -19,7 +19,7 @@
 ```
 web/                     # 主交付：Vite 8 + React 19 + TypeScript + GSAP
   src/                   # 6 个路由页（首页/师承谱/厨师详情/招聘/AI求职/社区）+ lib
-  public/data/           # chefs.json：1,415 条 = 1,238 真实 + 177 派生（8 门派 / 43 菜系）
+  public/data/           # chefs.json：1,513 条 = 1,238 真实 + 275 待补档案（8 门派 / 43 菜系）
   public/portraits/      # 853 位真实厨师头像
 .github/                 # GitHub Pages 部署工作流
 README.md / CLAUDE.md
