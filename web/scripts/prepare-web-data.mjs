@@ -76,6 +76,8 @@ const idToName = new Map();
 for (const c of raw.chefs) {
   if (c.id && c.name) idToName.set(c.id, c.name);
 }
+// 真实师傅名字集合（非占位）——判定占位徒弟的师承边是否有处安放
+const realNameSet = new Set(raw.chefs.filter(c => !c.isPlaceholder && c.name).map(c => c.name));
 
 const CUISINE_SHORT_MAP = {
   '川菜': '川', '粤菜': '粤', '鲁菜': '鲁', '淮扬菜': '淮扬',
@@ -114,9 +116,54 @@ function normalizeMaster(rawMaster) {
   return null;
 }
 
+// 占位记录 → 「待补档案」：名字与师承关系来自公开报道的 BFS 抓取（真实、可溯源），
+// 档案字段不完整（无照片/简介），以 derived 标记 + 界面「待补」徽标诚实保留。
+// 前提：师傅必须能解析到库内真实实体，否则这条边无处安放，仍丢弃。
+function normalizePlaceholder(raw) {
+  if (!raw.id || !raw.name) return null;
+  let masterName = null;
+  if (Array.isArray(raw.masters) && raw.masters.length > 0) {
+    masterName = raw.masters[0].name || null;
+  } else if (raw.master) {
+    masterName = normalizeMaster(raw.master);
+  }
+  if (!masterName || !realNameSet.has(masterName)) return null;
+  const src = sourceInfo(raw);
+  return {
+    id: raw.id,
+    name: raw.name,
+    cuisine: shortCuisine(raw.primaryCuisine),
+    school: clean(raw.school),
+    era: null,
+    birthYear: clean(raw.birth),
+    deathYear: null,
+    birthplace: clean(raw.birthplace),
+    city: clean(raw.city),
+    position: clean(raw.position),
+    restaurant: clean(raw.restaurant),
+    bio: null,
+    portrait: null,
+    signatureDishes: [],
+    master: masterName,
+    masters: [masterName],
+    titles: Array.isArray(raw.titles) ? raw.titles.filter(Boolean).slice(0, 4) : [],
+    gen: null,
+    pinyin: raw.pinyin ? {
+      name: raw.pinyin.name || '',
+      initial: raw.pinyin.nameInitial || '',
+      compact: raw.pinyin.nameCompact || '',
+      all: raw.pinyin.all || '',
+    } : null,
+    source: clean(raw.source),
+    sourceUrl: src.url,
+    sourceSite: src.site,
+    sourceSiteFromPortrait: src.siteFromPortrait,
+    derived: true,
+  };
+}
+
 function normalizeChef(raw) {
-  // 跳过 placeholder（占位符没真实价值）
-  if (raw.isPlaceholder) return null;
+  if (raw.isPlaceholder) return normalizePlaceholder(raw);
 
   // 取 master 名字：优先 masters 数组里的第一个
   let masterName = null;
@@ -317,8 +364,8 @@ const output = {
     withSignature: realChefs.filter(c => c.signatureDishes.length > 0).length,
     cuisines: Object.keys(cuisineCounts).length,
     schools: schoolsWithCount.filter(s => s.chefCount > 0).length,
-    // 补丁统计：由简介/提及推断出的"档案待补"师傅
-    derivedChefs: patch.stats.createdEntities,
+    // 待补档案总数：简介推断补出的师傅 + BFS 占位徒弟转化的「待补档案」（界面以「待补」徽标诚实标注）
+    derivedChefs: chefs.filter(c => c.derived).length,
     bioMentions: patch.stats.mentions,
     inferredEdges: patch.stats.edges,
     sourceWithUrl: withSourceUrl,
