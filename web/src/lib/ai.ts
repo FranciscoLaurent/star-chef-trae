@@ -256,7 +256,11 @@ export function demoExtract(text: string): ResumeProfile {
   const t = text.replace(/\s+/g, ' ').trim();
 
   const name = firstMatch(t, /我叫([\u4e00-\u9fa5]{2,4})/) || firstMatch(t, /我是([\u4e00-\u9fa5]{2,4})/);
-  const age = Number(firstMatch(t, /(?:今年|年龄)?\s*(\d{2})\s*岁/) || '') || null;
+  // 年龄：优先「今年/年龄 + 数字」显式说法；兜底「N 岁」但排除「从 18 岁(入行)」这类学艺年龄
+  const ageExplicit = Number(firstMatch(t, /(?:今年|年龄)\s*(\d{2})/) || '') || null;
+  const ageSui = /(\d{2})\s*岁/.exec(t);
+  const ageSuiOk = !!ageSui && !/[从跟]|入行/.test(t.slice(Math.max(0, (ageSui.index ?? 0) - 3), ageSui.index));
+  const age = ageExplicit ?? (ageSuiOk ? Number(ageSui[1]) : null);
 
   const cuisineWord = CUISINE_WORDS.find(w => t.includes(w));
   const cuisine = cuisineWord ? cuisineWord.replace('菜', '') : null;
@@ -280,8 +284,12 @@ export function demoExtract(text: string): ResumeProfile {
     ? sigRaw.split(/[、，,和及]/).map(s => s.trim()).filter(s => s.length >= 2 && !/^(菜|饭|面)$/.test(s)).slice(0, 5)
     : [];
 
-  const awardsRaw = firstMatch(t, /拿过([^。；]+)/) || firstMatch(t, /(?:获得|荣获|拿过|得过)([^。；]+)/);
-  const awards = awardsRaw ? awardsRaw.split(/[、，,]/).map(s => s.trim()).filter(Boolean).slice(0, 3) : [];
+  // 获奖：捕获到奖项关键词即止，避免吞掉后面的求职意向等无关内容
+  const awardsRaw = firstMatch(t, /拿过([^。；，]*?(?:金奖|银奖|冠军|状元))/)
+    || firstMatch(t, /(?:获得|荣获|得过)([^。；，]*?(?:金奖|银奖|冠军|状元))/);
+  const awards = awardsRaw
+    ? [awardsRaw.replace(/^(?:拿过|获得|荣获|得过)/, '').trim()].filter(Boolean)
+    : [];
 
   const salary = firstMatch(t, /(\d{1,2}\s*-\s*\d{1,2}\s*K)/i)
     || firstMatch(t, /(\d{1,2}\s*K\s*以上)/i)
