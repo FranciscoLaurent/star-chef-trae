@@ -202,7 +202,7 @@ export default function JobsPage() {
         <div className="section-head">
           <div className="num">§ 03</div>
           <h2>智能<br /><em>招聘匹配</em>。</h2>
-          <div className="right">菜系 40 · 师门 25 · 地域 20 · 薪资 15<br />岗位数据为演示数据</div>
+          <div className="right">匹配权重：菜系 40 · 师门 25 · 地域 20 · 薪资 15（满分 100）<br />岗位数据为演示数据</div>
         </div>
         <p className="hero-lead reveal" style={{ marginTop: 18 }}>
           基于师承、菜系、地域、薪资为<b>厨师与雇主双向推荐</b>最优匹配。厨师不必在库——随手填写，即刻匹配。

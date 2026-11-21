@@ -73,7 +73,7 @@ export default function RealLineagePreview() {
       <div className="section-head">
         <div className="num">§ 02</div>
         <h2>一张真实的<br /><em>谱</em>。</h2>
-        <div className="right">来自真实公开档案的可溯师承链<br />全谱 {data.meta.withMaster} 条师承记录 · 点开任一位读出处</div>
+        <div className="right">来自真实公开档案的可溯师承链<br />全谱 {data.meta.withMaster} 位厨师录得师承出处 · 点开任一位读出处</div>
       </div>
 
       <div className="rlp-board">
@@ -118,7 +118,7 @@ export default function RealLineagePreview() {
         </div>
 
         <div className="rlp-foot">
-          <span className="rlp-note">以上人物与关系均来自公开可溯资料 · 师承全谱 {data.meta.withMaster} 条记录</span>
+          <span className="rlp-note">以上人物与关系均来自公开可溯资料 · 全谱 {data.meta.withMaster} 位厨师录得师承出处</span>
           <Link className="cta" to="/lineage">在师承谱中看全部 <span className="arrow">→</span></Link>
         </div>
       </div>
