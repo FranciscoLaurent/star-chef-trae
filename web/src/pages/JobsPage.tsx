@@ -92,6 +92,14 @@ export default function JobsPage() {
     setAiDemo(false);
   }, [role, jobId, chefId, formKey]);
 
+  // 窄屏（≤980px，与 jobs-grid 折叠为单列的断点一致）详情区在列表下方：点卡后滚进视口；桌面三栏并排不滚动
+  const scrollDetailIntoView = () => {
+    if (!window.matchMedia('(max-width: 980px)').matches) return;
+    requestAnimationFrame(() => {
+      detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  };
+
   const toggleCuisine = (c: string) => {
     setCuisines(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
   };
@@ -255,7 +263,7 @@ export default function JobsPage() {
                   </datalist>
                 </label>
               </div>
-              <button className="ex-btn jf-fill-demo" onClick={fillDemo}>填入示例，一键看效果</button>
+              <button className="ex-btn jf-fill-demo" onClick={fillDemo}>试一试：填入示例，看匹配如何打分</button>
               {!hasAnyInfo && (
                 <div className="jf-missing">填任意一项（菜系 / 年限 / 城市）即开始计算匹配度</div>
               )}
@@ -315,7 +323,7 @@ export default function JobsPage() {
           </div>
           <div className="jobs-list">
             {role === 'chef' && jobList.map(({ job: j, m }) => (
-              <div key={j.id} className={`job-card ${activeJob.id === j.id ? 'active' : ''}`} onClick={() => setJobId(j.id)}>
+              <div key={j.id} className={`job-card ${activeJob.id === j.id ? 'active' : ''}`} onClick={() => { setJobId(j.id); scrollDetailIntoView(); }}>
                 <div className="jc-top">
                   <div>
                     <div className="jc-title">{j.cuisine}菜 · {j.title}</div>
@@ -335,7 +343,7 @@ export default function JobsPage() {
 
             {role === 'employer' && chefList.length === 0 && <div className="loading" style={{ padding: '30px 0' }}>该筛选下暂无厨师</div>}
             {role === 'employer' && chefList.map(({ chef: c, score }) => (
-              <div key={c.id} className={`job-card ${activeChef?.id === c.id ? 'active' : ''}`} onClick={() => setChefId(c.id)}>
+              <div key={c.id} className={`job-card ${activeChef?.id === c.id ? 'active' : ''}`} onClick={() => { setChefId(c.id); scrollDetailIntoView(); }}>
                 <div className="jc-top">
                   <div>
                     <div className="jc-title">{c.name} · {c.cuisine}菜</div>
@@ -376,7 +384,7 @@ export default function JobsPage() {
                     <MatchCard result={freeMatch} />
                   </>
                 ) : (
-                  <div className="jf-missing">尚未填写信息——左侧填任意一项，或点「填入示例，一键看效果」。</div>
+                  <div className="jf-missing">尚未填写信息——左侧填任意一项，或点「试一试：填入示例，看匹配如何打分」。</div>
                 )}
               </div>
 

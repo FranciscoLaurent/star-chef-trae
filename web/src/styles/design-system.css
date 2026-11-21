@@ -1149,10 +1149,10 @@ footer{
   .lineage-3col{grid-template-columns:1fr;min-height:auto}
   .ped-families{
     border-right:none;border-bottom:1px solid var(--ink);
-    max-height:auto;padding:14px 0 6px;
+    display:flex;flex-wrap:nowrap;overflow-x:auto;gap:0;
+    max-height:none;padding:14px 14px 8px;
   }
   .ped-families h6{padding-bottom:8px}
-  .ped-families #familyList{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:0;padding:0 14px 8px}
   .fam-row{
     flex-shrink:0;min-width:200px;border-top:none;border:1px solid var(--rule);
     margin-right:8px;padding:10px 14px;
@@ -1326,7 +1326,7 @@ footer{
 .match-bd .dim .v em{font-style:normal;color:var(--dust);font-size:10px;margin-left:2px}
 .match-bd .reason{margin-top:14px;padding:10px 12px;background:rgba(74,90,63,.08);border-left:2px solid var(--moss);font-size:12.5px;line-height:1.55;color:var(--ink);font-family:var(--mono)}
 .match-bd .reason em{color:var(--moss);font-style:italic;font-family:var(--serif);font-size:14px}
-@media(max-width:980px){.jobs-grid{grid-template-columns:1fr}.jobs-filter,.jobs-detail{position:static;max-height:none}}
+@media(max-width:980px){.jobs-grid{grid-template-columns:1fr}.jobs-filter,.jobs-detail{position:static;max-height:none}.jobs-list{max-height:none;overflow:visible}}
 
 @media(max-width:980px){
   .lineage-stats{grid-template-columns:1fr}

@@ -1,11 +1,40 @@
-// 模糊搜索 —— 姓名 / 拼音 / 菜系 / 拿手菜 / 称号
+// 模糊搜索 —— 姓名 / 拼音 / 菜系 / 拿手菜 / 称号 / 门派
 
-import type { Chef, WebData } from './types';
+import type { Chef, School, WebData } from './types';
 
 export interface SearchResult {
   chef: Chef;
   score: number;
   matchedFields: string[];
+  /** 命中门派时返回，供结果列表标注「门派 · 上河帮」 */
+  schoolKey?: string | null;
+  /** 展示用门派中文名（subName 优先） */
+  schoolName?: string | null;
+}
+
+/** 门派索引条目 */
+export interface SchoolEntry {
+  key: string;
+  /** 展示用中文名：subName 优先，如「上河帮」 */
+  name: string;
+  /** 学派正式名（schools.name 字段），如「蓉派」 */
+  fullName: string;
+  /** 别名（schools.subName 字段），可能为空串 */
+  subName: string;
+}
+
+/** schools 数组 → key→门派信息映射（展示名 subName 优先） */
+function buildSchoolMap(schools: School[]): Map<string, SchoolEntry> {
+  const map = new Map<string, SchoolEntry>();
+  for (const s of schools) {
+    map.set(s.key, {
+      key: s.key,
+      name: s.subName || s.name,
+      fullName: s.name,
+      subName: s.subName || '',
+    });
+  }
+  return map;
 }
 
 /**
@@ -15,13 +44,16 @@ export interface SearchIndex {
   byName: Map<string, Chef>;           // 中文姓名 → chef（精确）
   byPinyin: Chef[];                    // 所有 chef（拼音已存在 pinyin 字段）
   byCuisine: Map<string, Chef[]>;       // 短码 → chefs
-  signaturesFlat: { chef: Chef; dish: string; name: string; pinyinAll: string; position: string; titles: string }[];
+  signaturesFlat: { chef: Chef; dish: string; name: string; pinyinAll: string; position: string; titles: string; schoolText: string; schoolKey: string | null }[];
+  /** 门派 key → 门派信息（中文名映射 + 结果标注用） */
+  schoolByKey: Map<string, SchoolEntry>;
 }
 
 export function buildSearchIndex(data: WebData): SearchIndex {
   const byName = new Map<string, Chef>();
   const byCuisine = new Map<string, Chef[]>();
   const signaturesFlat: SearchIndex['signaturesFlat'] = [];
+  const schoolByKey = buildSchoolMap(data.schools);
 
   for (const c of data.chefs) {
     byName.set(c.name, c);
@@ -29,6 +61,11 @@ export function buildSearchIndex(data: WebData): SearchIndex {
       if (!byCuisine.has(c.cuisine)) byCuisine.set(c.cuisine, []);
       byCuisine.get(c.cuisine)!.push(c);
     }
+    // 门派可搜：haystack 追加门派中文名（subName / name 都纳入）+ key
+    const school = c.school ? schoolByKey.get(c.school) : undefined;
+    const schoolText = school
+      ? [school.name, school.fullName, school.subName, c.school].filter(Boolean).join(' ')
+      : '';
     signaturesFlat.push({
       chef: c,
       dish: c.signatureDishes.join(' '),
@@ -36,10 +73,12 @@ export function buildSearchIndex(data: WebData): SearchIndex {
       pinyinAll: c.pinyin?.all || c.pinyin?.name || '',
       position: c.position || '',
       titles: (c.titles || []).join(' '),
+      schoolText,
+      schoolKey: c.school || null,
     });
   }
 
-  return { byName, byPinyin: data.chefs, byCuisine, signaturesFlat };
+  return { byName, byPinyin: data.chefs, byCuisine, signaturesFlat, schoolByKey };
 }
 
 /**
@@ -51,13 +90,23 @@ export function search(query: string, index: SearchIndex, limit = 30): SearchRes
 
   const results: Map<string, SearchResult> = new Map();
 
-  const add = (chef: Chef, score: number, field: string) => {
+  const add = (chef: Chef, score: number, field: string, school?: SchoolEntry) => {
     const existing = results.get(chef.id);
     if (existing) {
       existing.score = Math.max(existing.score, score);
       if (!existing.matchedFields.includes(field)) existing.matchedFields.push(field);
+      if (school && !existing.schoolKey) {
+        existing.schoolKey = school.key;
+        existing.schoolName = school.name;
+      }
     } else {
-      results.set(chef.id, { chef, score, matchedFields: [field] });
+      results.set(chef.id, {
+        chef,
+        score,
+        matchedFields: [field],
+        schoolKey: school?.key ?? null,
+        schoolName: school?.name ?? null,
+      });
     }
   };
 
@@ -95,6 +144,14 @@ export function search(query: string, index: SearchIndex, limit = 30): SearchRes
     const hay = (entry.dish + ' ' + entry.pinyinAll + ' ' + entry.position + ' ' + entry.titles).toLowerCase();
     if (hay.includes(q)) {
       add(entry.chef, 40, 'signature-or-title');
+    }
+  }
+
+  // 6. 门派匹配（中文名直接子串匹配，key 亦可命中）
+  for (const entry of index.signaturesFlat) {
+    if (!entry.schoolKey || !entry.schoolText) continue;
+    if (entry.schoolText.toLowerCase().includes(q)) {
+      add(entry.chef, 45, 'school', index.schoolByKey.get(entry.schoolKey));
     }
   }
 

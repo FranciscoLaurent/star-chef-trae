@@ -153,6 +153,15 @@ export default function AssistantPage() {
     setQuick('generating');
     await new Promise(r => window.setTimeout(r, 320));
     await run(chosen.text);
+    // ⑥ 演示沉底：档案渲染成功后把输出区滚入视口（窄屏输入/输出上下排布才需要）
+    if (window.matchMedia('(max-width: 860px)').matches) {
+      window.setTimeout(() => {
+        const out = document.querySelector('.asst-output');
+        if (out?.querySelector('.ao-card')) {
+          out.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 80);
+    }
     setQuick('idle');
   };
 
@@ -346,6 +355,7 @@ export default function AssistantPage() {
 
           {profile && (
             <div className="ao-card">
+              <div className="hint-line ao-edit-hint">灰字可直接点击修改</div>
               {(isDemo || profile.completeness < 100) && (
                 <div className="ao-missing">
                   <div className="ao-missing-head">
@@ -359,10 +369,16 @@ export default function AssistantPage() {
                 <div className="ao-demo-tag">本地演示解析 · 未配置 API Key 时的兜底结果（可继续编辑）</div>
               )}
 
-              <div className="ao-name" contentEditable suppressContentEditableWarning
-                onBlur={e => setProfile(p => p ? { ...p, name: e.currentTarget.textContent || null } : p)}>
-                {profile.name || '未命名'}
-                {profile.age != null && ` · ${profile.age}岁`}
+              <div className="ao-name-row">
+                <div className="ao-name" contentEditable suppressContentEditableWarning
+                  onBlur={e => {
+                    // 只拿纯姓名：年龄等附加信息已拆到不可编辑的独立节点
+                    const v = (e.currentTarget.textContent || '').trim();
+                    setProfile(p => p ? { ...p, name: v || null } : p);
+                  }}>
+                  {profile.name || '未命名'}
+                </div>
+                {profile.age != null && <span className="ao-age">· {profile.age}岁</span>}
               </div>
 
               <div className="ao-tags">

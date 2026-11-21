@@ -33,7 +33,7 @@ export default function NavBar() {
     <>
       <div className="statusbar">
         <div className="col">
-          <span><span className="dot" />LIVE · 数据在线</span>
+          <span><span className="dot" />ARCHIVE · 数据可溯</span>
           <span>{data ? data.meta.total.toLocaleString() : '—'} 位厨师档案</span>
         </div>
         <div className="col center">星厨传承 · EDITION 01</div>
@@ -62,7 +62,8 @@ export default function NavBar() {
 
           <div className="nav-end">
             <button className="nav-search" onClick={() => setPaletteOpen(true)} aria-label="搜索">
-              <span>搜索厨师 / 门派 / 拿手菜</span>
+              <span className="nav-search-label">搜索厨师 / 门派 / 拿手菜</span>
+              <span className="nav-search-short">搜索厨师</span>
               <span className="nav-kbd">⌘K</span>
             </button>
             <button className="mobile-menu-btn" onClick={() => setMenuOpen(v => !v)} aria-label="菜单">

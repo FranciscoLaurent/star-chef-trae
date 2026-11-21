@@ -5,7 +5,8 @@ import {
 } from '../lib/community';
 import { usePageReveal, useStaggerIn } from '../lib/motion';
 
-const CUISINES = ['全部', '川', '粤', '鲁', '淮扬', '湘', '苏', '浙', '闽', '京'];
+/** composer 菜系 chips：固定 9 项，不随帖子变化 */
+const COMPOSER_CUISINES = ['川', '粤', '鲁', '淮扬', '湘', '苏', '浙', '闽', '京'];
 
 export default function CommunityPage() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -23,6 +24,12 @@ export default function CommunityPage() {
   const filtered = useMemo(
     () => tab === '全部' ? posts : posts.filter(p => p.cuisine === tab),
     [posts, tab]
+  );
+
+  // tabs 由帖子派生：「全部」恒首，其余按帖子出现顺序（发新菜系帖后自动生长，空菜系不显示）
+  const visibleTabs = useMemo(
+    () => ['全部', ...Array.from(new Set(posts.map(p => p.cuisine).filter(Boolean)))],
+    [posts]
   );
 
   useStaggerIn('.comm-grid .post-card', [tab, posts.length]);
@@ -69,7 +76,7 @@ export default function CommunityPage() {
         </p>
 
         <div className="comm-tabs" style={{ marginTop: 22 }}>
-          {CUISINES.map(c => (
+          {visibleTabs.map(c => (
             <button key={c} className={`ct-btn ${tab === c ? 'active' : ''}`} onClick={() => setTab(c)}>{c}</button>
           ))}
         </div>
@@ -223,7 +230,7 @@ function ComposeModal({ onCancel, onSubmit }: {
         <div className="cm-field">
           <label className="hint-line">菜系</label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {CUISINES.filter(c => c !== '全部').map(c => (
+            {COMPOSER_CUISINES.map(c => (
               <button key={c} className={`jf-chip ${cuisine === c ? 'active' : ''}`} onClick={() => setCuisine(c)}>{c}</button>
             ))}
           </div>
