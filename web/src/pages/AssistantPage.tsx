@@ -3,6 +3,7 @@ import {
   demoExtract, extractResume, getApiKey, getMode, setApiKey, setMode,
   type AiMode, type ResumeProfile,
 } from '../lib/ai';
+import { copyTextToClipboard } from '../lib/jobs';
 import { usePageReveal } from '../lib/motion';
 
 const EXAMPLES: Record<string, { label: string; text: string }> = {
@@ -21,6 +22,21 @@ const EXAMPLES: Record<string, { label: string; text: string }> = {
 };
 
 const CUISINES = ['川', '粤', '鲁', '淮扬', '湘', '浙', '徽', '闽', '京', '沪'];
+
+/** 由当前档案 state 组织出可投递的纯文本（只含已填字段，不编造） */
+function buildProfileText(p: ResumeProfile): string {
+  return [
+    `姓名：${p.name || '未提供'}${p.age != null ? `（${p.age} 岁）` : ''}`,
+    p.cuisine && `菜系：${p.cuisine}菜`,
+    p.master && `师承：师从 ${p.master}`,
+    p.years != null && `从业年限：${p.years} 年`,
+    p.signature.length > 0 && `拿手菜：${p.signature.join('、')}`,
+    p.awards.length > 0 && `获奖与资质：${p.awards.join('、')}`,
+    (p.intent.position || p.intent.city || p.intent.salary)
+      && `求职意向：${[p.intent.position, p.intent.city, p.intent.salary].filter(Boolean).join(' · ')}`,
+    p.bio && `\n自荐信：${p.bio}`,
+  ].filter(Boolean).join('\n');
+}
 
 export default function AssistantPage() {
   usePageReveal();
@@ -399,8 +415,17 @@ export default function AssistantPage() {
               </div>
 
               <div className="ao-actions">
-                <button className="primary" onClick={() => flash('已发布到招聘广场（演示）')}>发布到招聘广场</button>
-                <button onClick={() => flash('已保存档案（演示）')}>保存为档案</button>
+                <button className="primary" onClick={async () => {
+                  if (!profile) return;
+                  // 真实闭环：档案纯文本复制到剪贴板，老师傅可请人粘贴投递
+                  const ok = await copyTextToClipboard(buildProfileText(profile));
+                  flash(ok ? '已复制求职档案到剪贴板，可粘贴给雇主或招聘方' : '复制失败，请手动选择文本复制');
+                }}>复制求职档案</button>
+                <button onClick={async () => {
+                  if (!profile?.bio) { flash('自荐信尚未生成，请先补充后再复制'); return; }
+                  const ok = await copyTextToClipboard(profile.bio);
+                  flash(ok ? '已复制自荐信到剪贴板' : '复制失败，请手动选择文本复制');
+                }}>复制自荐信</button>
               </div>
             </div>
           )}

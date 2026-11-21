@@ -3,7 +3,7 @@ import { useData } from '../lib/useData';
 import {
   JOBS, JOB_CITIES, matchBreakdown, matchFreeProfile, topChefsForJob, topJobsForChef, topDim,
   CUISINE_OPTIONS, YEAR_OPTIONS, TARGET_OPTIONS, EMP_YEAR_BUCKETS, inYearBucket,
-  yearsLabel, titleHit,
+  yearsLabel, titleHit, copyTextToClipboard,
   EMPTY_FORM, type FreeForm, type Job, type MatchResult,
 } from '../lib/jobs';
 import { getApiKey, getMode, callDeepSeek, explainPrompt, demoExplain } from '../lib/ai';
@@ -55,11 +55,11 @@ export default function JobsPage() {
       });
   }, [form, hasAnyInfo]);
 
-  // 雇主侧：厨师列表（菜系/城市/年限筛库，按与对比岗位的匹配度排序）
+  // 雇主侧：厨师列表（菜系/城市/年限筛库，按与对比岗位的匹配度排序；已故者不作为候选人）
   const chefList = useMemo(() => {
     if (!data) return [];
     return data.chefs
-      .filter(c => !c.derived && c.name && c.cuisine
+      .filter(c => !c.derived && !c.deathYear && c.name && c.cuisine
         && (!cuisines.length || cuisines.includes(c.cuisine))
         && (!city || c.city === city)
         && inYearBucket(c, yearsFilter))
@@ -339,7 +339,7 @@ export default function JobsPage() {
                 <div className="jc-top">
                   <div>
                     <div className="jc-title">{c.name} · {c.cuisine}菜</div>
-                    <div className="jc-meta">{c.restaurant || '档案未录单位'} · {c.city || '—'} · {c.gen != null ? `第${c.gen}代` : '代际待考'}</div>
+                    <div className="jc-meta">{c.restaurant || '档案未录单位'} · {c.city || '—'} · {c.gen != null ? `第${c.gen}代` : '代际待考'}{c.era ? ` · ${c.era}` : ''}</div>
                   </div>
                   <div className="jc-match">{score}<span className="pct">%</span></div>
                 </div>
@@ -393,10 +393,10 @@ export default function JobsPage() {
               {data && (
                 <div className="jd-section">
                   <h6>推荐匹配厨师</h6>
-                  {topChefsForJob(activeJob, data.chefs, 3).map(({ chef: c, total }) => (
+                  {topChefsForJob(activeJob, data.chefs.filter(c => !c.deathYear), 3).map(({ chef: c, total }) => (
                     <div key={c.id} className="jd-match-row">
                       <div className="jdm-avatar">{c.name[0]}</div>
-                      <div className="jdm-name">{c.name} · {c.position || `${c.cuisine}菜`}</div>
+                      <div className="jdm-name">{c.name}{c.era ? ` · ${c.era}` : ''} · {c.position || `${c.cuisine}菜`}</div>
                       <div className="jdm-score">{total}%</div>
                     </div>
                   ))}
@@ -406,7 +406,19 @@ export default function JobsPage() {
               )}
 
               <div className="jd-section">
-                <button className="jd-primary" onClick={() => setNotice(`已以「${form.name || '匿名厨师'}」名义投递简历（演示）`)}>投递简历</button>
+                <button className="jd-primary" onClick={async () => {
+                  // 真实闭环：把当前求职档案复制到剪贴板，用户自行粘贴投递
+                  const text = [
+                    `姓名：${form.name || '匿名厨师'}`,
+                    form.cuisine && `菜系：${form.cuisine}菜`,
+                    form.years && `从业年限：${yearsLabel(form.years)}`,
+                    form.signature && `擅长菜：${form.signature}`,
+                    form.target && `目标岗位：${form.target}`,
+                    form.city && `期望城市：${form.city}`,
+                  ].filter(Boolean).join('\n');
+                  const ok = await copyTextToClipboard(text);
+                  setNotice(ok ? '已复制求职档案到剪贴板，可直接粘贴投递' : '复制失败，请手动选择文本复制');
+                }}>复制求职档案</button>
                 {notice && <div className="jd-notice">{notice}</div>}
               </div>
             </>
@@ -461,7 +473,22 @@ export default function JobsPage() {
               </div>
 
               <div className="jd-section">
-                <button className="jd-primary" onClick={() => setNotice('已向厨师发出沟通请求（演示）')}>联系厨师</button>
+                <button className="jd-primary" onClick={async () => {
+                  // 真实闭环：把厨师档案纯文本复制到剪贴板，雇主自行粘贴沟通
+                  const c = activeChef;
+                  const text = [
+                    `${c.name}${c.era ? `（${c.era}）` : ''}`,
+                    c.cuisine && `${c.cuisine}菜`,
+                    c.gen != null && `第${c.gen}代`,
+                    c.master && `师承：师从 ${c.master}`,
+                    (c.restaurant || c.position) && `现任：${[c.restaurant, c.position].filter(Boolean).join(' · ')}`,
+                    c.city && `所在城市：${c.city}`,
+                    c.signatureDishes.length > 0 && `拿手菜：${c.signatureDishes.join('、')}`,
+                    c.bio,
+                  ].filter(Boolean).join('\n');
+                  const ok = await copyTextToClipboard(text);
+                  setNotice(ok ? '已复制厨师档案到剪贴板，可直接粘贴沟通' : '复制失败，请手动选择文本复制');
+                }}>复制厨师档案</button>
                 {notice && <div className="jd-notice">{notice}</div>}
               </div>
             </>

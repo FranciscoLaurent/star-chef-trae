@@ -26,35 +26,35 @@ export interface Job {
 export const JOBS: Job[] = [
   {
     id: 'j01', title: '川菜厨师长', restaurant: '成都 · 松云泽', city: '成都', cuisine: '川', salary: '18-25K', level: '厨师长',
-    employerType: '社会餐饮', schoolPref: 'rongpai', tags: ['包吃住', '五险一金', '年终奖'],
+    employerType: '社会餐饮', schoolPref: 'shang-he-bang', tags: ['包吃住', '五险一金', '年终奖'],
     desc: '负责后厨出品把控与团队管理，要求熟悉传统川菜二十四味型，有师承背景者优先，能带 8-12 人后厨团队。',
     requirements: ['8 年以上川菜灶台经验', '熟悉二十四味型与筵席菜', '有 5 人以上团队管理经历', '能接受晚市与周末排班'],
     postedAt: '2 天前', verified: true,
   },
   {
     id: 'j02', title: '粤菜炒锅', restaurant: '广州 · 炳胜', city: '广州', cuisine: '粤', salary: '10-15K', level: '炒锅',
-    employerType: '社会餐饮', schoolPref: 'guangfu', tags: ['月休 6 天', '包住'],
+    employerType: '社会餐饮', schoolPref: 'guang-fu', tags: ['月休 6 天', '包住'],
     desc: '需 3 年以上粤菜镬气功底，熟悉小炒与蒸品，能配合砧板与打荷完成出品。',
     requirements: ['3 年以上粤菜炒锅经验', '掌握镬气小炒与蒸品', '熟悉砧板—打荷协作流程'],
     postedAt: '3 天前', verified: true,
   },
   {
     id: 'j03', title: '淮扬菜主厨', restaurant: '扬州 · 趣园茶社', city: '扬州', cuisine: '淮扬', salary: '15-22K', level: '厨师长',
-    employerType: '社会餐饮', schoolPref: 'huaiyang', tags: ['双休', '包吃住', '技能补贴'],
+    employerType: '社会餐饮', tags: ['双休', '包吃住', '技能补贴'],
     desc: '刀工扎实，熟悉文思豆腐、狮子头等经典淮扬菜，负责冷菜与热菜出品标准制定。',
     requirements: ['10 年以上淮扬菜经验', '刀工见长，能做文思豆腐', '有出品标准制定经验'],
     postedAt: '1 天前', verified: true,
   },
   {
     id: 'j04', title: '湘菜炒锅', restaurant: '长沙 · 费大厨', city: '长沙', cuisine: '湘', salary: '8-12K', level: '炒锅',
-    employerType: '社会餐饮', schoolPref: 'xiangjiang', tags: ['包吃住', '绩效'],
+    employerType: '社会餐饮', schoolPref: 'xiang-jiang', tags: ['包吃住', '绩效'],
     desc: '熟悉湘菜小炒与腊味处理，出餐速度快，能适应连锁门店标准化流程。',
     requirements: ['3 年以上湘菜小炒经验', '熟悉腊味与剁椒类菜品', '能适应标准化出餐节奏'],
     postedAt: '5 天前', verified: false,
   },
   {
     id: 'j05', title: '鲁菜砧板主管', restaurant: '济南 · 聚丰德', city: '济南', cuisine: '鲁', salary: '9-13K', level: '主管',
-    employerType: '社会餐饮', schoolPref: 'jinan', tags: ['包吃', '节日福利'],
+    employerType: '社会餐饮', tags: ['包吃', '节日福利'],
     desc: '负责原料验收、切配与成本控制，熟悉鲁菜吊汤与干货发制。',
     requirements: ['5 年以上砧板经验', '熟悉鲁菜吊汤与干货发制', '具备成本控制意识'],
     postedAt: '1 周前', verified: true,
@@ -68,28 +68,28 @@ export const JOBS: Job[] = [
   },
   {
     id: 'j07', title: '京菜面点师', restaurant: '北京 · 四世同堂', city: '北京', cuisine: '京', salary: '9-14K', level: '主管',
-    employerType: '社会餐饮', schoolPref: 'jing', tags: ['包吃住', '月休 4 天'],
+    employerType: '社会餐饮', tags: ['包吃住', '月休 4 天'],
     desc: '精通京式面点与宫廷点心，能独立完成宴会点心台。',
     requirements: ['精通京式面点', '能独立完成宴会点心台', '有节令点心研发经验'],
     postedAt: '4 天前', verified: false,
   },
   {
     id: 'j08', title: '川菜学徒', restaurant: '成都 · 马旺子', city: '成都', cuisine: '川', salary: '4-6K', level: '学徒',
-    employerType: '社会餐饮', schoolPref: 'rongpai', tags: ['带薪培训', '包吃住'],
+    employerType: '社会餐饮', schoolPref: 'shang-he-bang', tags: ['带薪培训', '包吃住'],
     desc: '零基础可，愿意长期学习川菜基本功，师傅带教，从墩子与打荷做起。',
     requirements: ['能吃苦，愿意长期学艺', '服从师傅带教安排', '身体健康，能适应站灶'],
     postedAt: '今天', verified: true,
   },
   {
     id: 'j09', title: '粤菜烧腊主管', restaurant: '深圳 · 陶陶居', city: '深圳', cuisine: '粤', salary: '14-18K', level: '主管',
-    employerType: '社会餐饮', schoolPref: 'guangfu', tags: ['包住', '年终双薪'],
+    employerType: '社会餐饮', schoolPref: 'guang-fu', tags: ['包住', '年终双薪'],
     desc: '负责烧腊档口出品，熟悉叉烧、烧鹅全流程，能控损耗。',
     requirements: ['6 年以上烧腊经验', '熟悉叉烧、烧鹅全流程', '能控损耗与排产'],
     postedAt: '6 天前', verified: true,
   },
   {
     id: 'j10', title: '私房菜主厨', restaurant: '杭州 · 湖畔私宴', city: '杭州', cuisine: '浙', salary: '16-24K', level: '厨师长',
-    employerType: '私厨', schoolPref: 'zhejiang', tags: ['弹性排班', '包吃'],
+    employerType: '私厨', tags: ['弹性排班', '包吃'],
     desc: '小而精的私宴场景，需独立设计时令菜单，重视食材本味。',
     requirements: ['能独立设计时令菜单', '重视食材本味与呈现', '有私宴或会所经验'],
     postedAt: '2 天前', verified: false,
@@ -103,7 +103,7 @@ export const JOBS: Job[] = [
   },
   {
     id: 'j12', title: '闽菜厨师长', restaurant: '厦门 · 临家', city: '厦门', cuisine: '闽', salary: '15-20K', level: '厨师长',
-    employerType: '酒店', schoolPref: 'min', tags: ['包吃住', '带薪年假'],
+    employerType: '酒店', tags: ['包吃住', '带薪年假'],
     desc: '熟悉闽南菜与海鲜处理，负责后厨人效与毛利管理。',
     requirements: ['8 年以上闽菜经验', '熟悉海鲜处理', '有毛利与人效管理经验'],
     postedAt: '1 周前', verified: true,
@@ -345,4 +345,32 @@ export function inYearBucket(chef: Chef, bucket: string): boolean {
   if (bucket === '<10') return y < 10;
   if (bucket === '10-20') return y >= 10 && y < 20;
   return y >= 20;
+}
+
+/* ============================================================
+ * 剪贴板小工具：局域网 http（非安全上下文）拿不到 Clipboard API，
+ * 回退 execCommand('copy')，保证「复制求职档案」真实可用
+ * ============================================================ */
+
+export async function copyTextToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch { /* 降级到 execCommand */ }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
 }

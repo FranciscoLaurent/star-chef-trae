@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useData } from '../lib/useData';
-import { buildFamilies, groupByGen } from '../lib/lineage';
+import { buildFamilies, getDisciples, getLineage, groupByGen } from '../lib/lineage';
+import type { Chef } from '../lib/types';
 import ChefProfile from '../components/ChefProfile';
 import { swapFade, useStaggerIn } from '../lib/motion';
 
 const GEN_LATIN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 const GEN_CN = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+
+/** B3+C3：「代际待考」行默认只展开前 12 张人卡，其余收进「展开全部」 */
+const PENDING_PREVIEW = 12;
 
 export default function LineagePage() {
   const { data, loading, error } = useData();
@@ -16,6 +20,8 @@ export default function LineagePage() {
     () => { try { return sessionStorage.getItem('lineage:school'); } catch { return null; } }
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // B3+C3：「代际待考」行折叠态 —— 以「家派|门派」为作用域记 key，切谱/切筛选自动回到折叠（渲染期推导，免 effect）
+  const [pendingExpandKey, setPendingExpandKey] = useState<string | null>(null);
   const mainRef = useRef<HTMLElement>(null);
 
   const families = useMemo(() => data ? buildFamilies(data) : [], [data]);
@@ -107,12 +113,51 @@ export default function LineagePage() {
     return byId || (familyChefs[0] ?? null);
   }, [data, selectedId, familyChefs]);
 
+  // B1：选中即点亮师承链 —— 上溯链 + 递归徒弟 id 集（apprenticeMap 按师傅名 BFS，n=1415 微秒级）
+  const chainInfo = useMemo(() => {
+    if (!data || !selected) return null;
+    const chain = getLineage(selected, data);
+    const byId = new Map(data.chefs.map(c => [c.id, c] as [string, Chef]));
+    const discipleIds = new Set<string>();
+    const seenNames = new Set<string>([selected.name]);
+    const queue: string[] = [selected.name];
+    while (queue.length) {
+      const name = queue.shift()!;
+      for (const id of data.apprenticeMap[name] || []) {
+        if (discipleIds.has(id)) continue;
+        discipleIds.add(id);
+        const d = byId.get(id);
+        if (d?.name && !seenNames.has(d.name)) { seenNames.add(d.name); queue.push(d.name); }
+      }
+    }
+    return {
+      chainIds: new Set([...chain.map(c => c.id), ...discipleIds]),
+      upGens: Math.max(chain.length - 1, 0),
+      disciples: getDisciples(selected, data),
+    };
+  }, [data, selected]);
+
   useStaggerIn('.gen-row .person-card', [filtered.length, familyKey]);
 
   if (loading) return <div className="lineage-wrap"><div className="loading" style={{ paddingTop: 80 }}>正在绘制宗谱…</div></div>;
   if (error || !data) return <div className="lineage-wrap"><div className="loading" style={{ paddingTop: 80 }}>数据加载失败：{error?.message || '未知错误'}</div></div>;
 
   const maxGen = Math.max(0, ...familyChefs.map(c => c.gen ?? 0));
+  const covPct = Math.round(data.meta.withMaster / data.meta.total * 100);
+  // B3+C3：待考行折叠态的当前作用域（家派 + 门派筛选），切换后自动折叠；
+  // 若选中者落在待考组第 12 张之后（如 /chef/:id 刷新直达），渲染期推导自动展开，保证「选中必可见」
+  const pendingScope = `${familyKey ?? ''}|${schoolFilter ?? ''}`;
+  const pendingGroup = genGroups.find(g => g.gen === null);
+  const pendingSelectedHidden = selected != null && !!pendingGroup
+    && pendingGroup.chefs.findIndex(c => c.id === selected.id) >= PENDING_PREVIEW;
+  const pendingExpanded = pendingExpandKey === pendingScope || pendingSelectedHidden;
+  // B1：ped-title 下的链况胶囊 —— 无可考师承（既无上游也无门徒）时不渲染
+  const chainPill = chainInfo && (chainInfo.upGens > 0 || chainInfo.disciples.length > 0)
+    ? [
+      chainInfo.upGens > 0 ? `上溯 ${chainInfo.upGens} 代` : '开派',
+      chainInfo.disciples.length > 0 ? `门下 ${chainInfo.disciples.length} 人` : null,
+    ].filter(Boolean).join(' · ')
+    : null;
 
   return (
     <div className="lineage-wrap page-enter">
@@ -132,6 +177,7 @@ export default function LineagePage() {
           <span className="ls-num">{data.meta.withMaster.toLocaleString()}</span>
           <span className="ls-label">师承关系可追溯</span>
           <span className="ls-desc">占比 {Math.round(data.meta.withMaster / data.meta.total * 100)}%</span>
+          <span className="ls-honest">均来自公开简介推断 · 人工核验持续进行中</span>
         </div>
         <div className="ls-item">
           <span className="ls-num">{data.meta.schools}</span>
@@ -188,39 +234,56 @@ export default function LineagePage() {
             </div>
           </div>
 
+          {/* B1 选中链胶囊 + C1 一次性图例（全谱仅此一处，不逐卡解释） */}
+          <div className="ped-chain-row">
+            {chainPill && <span className="ped-chain-pill">{chainPill}</span>}
+            <span className="ped-legend">「待补」徽标 = 管线自动生成的占位档案</span>
+          </div>
+
           {filtered.length === 0 && (
             <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--dust)', fontFamily: 'var(--serif)', fontStyle: 'italic' }}>
               当前筛选下无人物，请调整菜系。
             </div>
           )}
 
-          {genGroups.map(g => (
-            <div key={g.gen === null ? 'pending' : g.gen} className="gen-row">
-              <div className="gen-label">
-                {g.gen === null ? '?' : (GEN_LATIN[g.gen] || g.gen)}
-                <small>{g.gen === null ? `代际待考 · ${g.chefs.length} 人` : `第${GEN_CN[g.gen] || g.gen}代 · GEN ${g.gen}`}</small>
-              </div>
-              <div className="gen-people">
-                {g.chefs.map(c => (
-                  <div key={c.id}
-                    className={`person-card ${selected?.id === c.id ? 'active' : ''}`}
-                    onClick={() => openChef(c.id)}>
-                    <div className="pc-portrait">
-                      {c.portrait && (
-                        <img src={c.portrait} alt="" loading="lazy"
-                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-                      )}
-                      <span>{c.name.slice(0, 1)}</span>
+          {genGroups.map(g => {
+            const isPending = g.gen === null;
+            // B3+C3：待考行默认只展示前 12 张卡，gen 有值的行不受影响
+            const shown = isPending && !pendingExpanded ? g.chefs.slice(0, PENDING_PREVIEW) : g.chefs;
+            return (
+              <div key={g.gen === null ? 'pending' : g.gen} className={`gen-row ${isPending ? 'gen-row-pending' : ''}`}>
+                <div className="gen-label">
+                  {g.gen === null ? '?' : (GEN_LATIN[g.gen] || g.gen)}
+                  <small>{g.gen === null ? `代际待考 · ${g.chefs.length} 人` : `第${GEN_CN[g.gen] || g.gen}代 · GEN ${g.gen}`}</small>
+                </div>
+                <div className="gen-people">
+                  {isPending && (
+                    <div className="pending-note">暂无公开师承记载，仅入名录 · 全谱师承可溯 {covPct}%</div>
+                  )}
+                  {shown.map(c => (
+                    <div key={c.id}
+                      className={`person-card ${chainInfo?.chainIds.has(c.id) ? 'in-chain' : ''} ${selected?.id === c.id ? 'active' : ''}`}
+                      onClick={() => openChef(c.id)}>
+                      <div className="pc-portrait">
+                        {c.portrait && (
+                          <img src={c.portrait} alt="" loading="lazy"
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                        )}
+                        <span>{c.name.slice(0, 1)}</span>
+                      </div>
+                      <div className="pc-info">
+                        <strong>{c.name}{c.derived && <i className="pc-pending">待补</i>}</strong>
+                        <span>{c.city || (c.position ? c.position.slice(0, 6) : (c.cuisine ? `${c.cuisine}菜` : '—'))}</span>
+                      </div>
                     </div>
-                    <div className="pc-info">
-                      <strong>{c.name}</strong>
-                      <span>{[c.position, c.city].filter(Boolean).join(' · ') || (c.cuisine ? `${c.cuisine}菜` : '—')}</span>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                  {isPending && !pendingExpanded && g.chefs.length > PENDING_PREVIEW && (
+                    <button className="ped-more" onClick={() => setPendingExpandKey(pendingScope)}>展开全部</button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </main>
 
         {/* 右栏：人物详情 */}

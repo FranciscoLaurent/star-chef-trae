@@ -227,7 +227,7 @@ export async function extractResume(
       { role: 'system', content: EXTRACT_SYSTEM },
       { role: 'user', content: text },
     ],
-    { ...opts, temperature: 0.7, stream: true },
+    { ...opts, temperature: 0.5, stream: true },
   );
   return { profile: parseLooseJson(raw), raw };
 }

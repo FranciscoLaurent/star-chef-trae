@@ -1207,6 +1207,49 @@ footer{
 .ld-btn.ghost:hover{background:var(--ink);color:var(--paper)}
 #aiLineageResult{font-size:14px;line-height:1.75;color:var(--ink-soft);min-height:20px;padding:16px;background:var(--paper-2);border-left:3px solid var(--gold);border-radius:0 4px 4px 0}
 
+/* ============ 谱页增补 · 批次2（B1 选中点亮 / C1 待补徽标 / C2 hero 标注 / B5 meta 截断 / B3+C3 待考折叠） ============ */
+/* B1：师承链点亮 —— 用 :not(.active) 分层，选中链头保持 .active 的更重视觉，互不覆盖 */
+.person-card.in-chain:not(.active){
+  border-color:rgba(184,50,26,.55);
+  background:rgba(184,50,26,.045);
+  box-shadow:2px 2px 0 rgba(184,50,26,.10);
+}
+.person-card.in-chain:not(.active) .pc-portrait{border-color:rgba(184,50,26,.55)}
+.person-card.in-chain:not(.active):hover{border-color:var(--vermillion)}
+
+/* B1 链况胶囊 + C1 一次性图例：ped-title 下一行排布 */
+.ped-chain-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0 16px}
+.ped-chain-pill{
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;white-space:nowrap;
+  color:var(--vermillion);border:1px solid rgba(184,50,26,.5);border-radius:99px;
+  padding:4px 12px;background:rgba(184,50,26,.05);
+}
+.ped-legend{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--dust)}
+
+/* C2：hero「师承关系可追溯」统计卡内的诚实标注小字 */
+.ls-honest{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--dust);margin-top:5px}
+
+/* C1：人卡「待补」徽标（灰化小胶囊，复用 ld-tag 的 mono 描边思路） */
+.pc-pending{
+  font-style:normal;font-family:var(--mono);font-size:9px;letter-spacing:.08em;
+  color:var(--dust);border:1px solid var(--rule);border-radius:99px;
+  padding:0 5px;margin-left:5px;vertical-align:2px;white-space:nowrap;background:var(--paper-2);
+}
+
+/* B5：谱页人卡 meta 单行截断 + 卡高对齐（仅限 .person-card，勿动 face-card / rlp-*） */
+.lineage-3col .person-card{min-height:72px}
+.person-card .pc-info{min-width:0}
+.person-card .pc-info span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+
+/* B3+C3：「代际待考」行折叠 —— 行首小字注 + 展开按钮 */
+.pending-note{flex-basis:100%;font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;color:var(--dust)}
+.ped-more{
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--ink);
+  padding:6px 14px;border:1px solid var(--ink);border-radius:99px;background:transparent;
+  cursor:pointer;transition:all .2s;
+}
+.ped-more:hover{background:var(--ink);color:var(--paper)}
+
 /* 树节点（已废弃,保留空规则避免影响其他视图） */
 
 /* ============ 招聘视图 ============ */
