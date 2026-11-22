@@ -145,16 +145,16 @@
  },
  {
   "id": "s11-end",
-  "raw": "星厨传承——以师承为信用，用 TRAE 构建。[[cue:brand]]世界很大，放手去造。",
-  "text": "星厨传承——以师承为信用，用 TRAE 构建。世界很大，放手去造。",
+  "raw": "星厨传承——以师承为信用。[[cue:brand]]让每一门手艺，都有出处。",
+  "text": "星厨传承——以师承为信用。让每一门手艺，都有出处。",
   "cues": [
    {
     "id": "brand",
-    "charOffset": 29
+    "charOffset": 13
    }
   ],
   "audio": "audio/s11-end.mp3",
-  "duration": 7.224,
+  "duration": 6.168,
   "words": []
  }
 ]

@@ -2,12 +2,14 @@
 const { chromium } = require("playwright");
 const path = require("path");
 const OUT = path.resolve(__dirname, "../../素材/截图");
-const URL = "http://localhost:8899/" + encodeURIComponent("演示视频.html") + "?rec=1";
+// 服务器根 = 仓库根（头像走 ../../web/public/portraits 相对路径）
+const URL = "http://localhost:8899/" + encodeURI("参赛材料/视频制作/演示视频.html") + "?rec=1";
 
 const SHOTS = [
-  ["s01-hook", 2.8], ["s02-36", 16.8], ["s03-card", 26.5], ["s04-chain", 35.0],
+  ["s01-wall", 4.6], ["s01-focus", 6.5], ["s02-band", 10.6], ["s02-chips", 15.9],
+  ["s02-resume", 18.1], ["s03-card", 26.5], ["s04-sweep", 33.8], ["s04-stamp", 36.5],
   ["s05-wait", 44.8], ["s06-source", 51.8], ["s07-score", 63.0], ["s08-typing", 74.5],
-  ["s08-copy", 78.3], ["s09-community", 83.5], ["s10-vision", 95.5], ["s11-end", 104.5],
+  ["s08-copy", 78.3], ["s09-community", 83.5], ["s10-vision", 95.5], ["s11-end", 104.6],
 ];
 
 (async () => {

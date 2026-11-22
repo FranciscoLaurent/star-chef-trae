@@ -3,7 +3,7 @@
  "voice": "edge-tts zh-CN-XiaoxiaoNeural",
  "speed": 1.0,
  "gap": 0.55,
- "totalDuration": 108.572,
+ "totalDuration": 107.516,
  "voiceover": "voiceover.mp3",
  "scenes": [
   {
@@ -478,38 +478,31 @@
   {
    "id": "s11-end",
    "start": 99.948,
-   "end": 107.172,
-   "duration": 7.224,
+   "end": 106.116,
+   "duration": 6.168,
    "audio": "audio/s11-end.mp3",
-   "text": "星厨传承——以师承为信用，用 TRAE 构建。世界很大，放手去造。",
+   "text": "星厨传承——以师承为信用。让每一门手艺，都有出处。",
    "chunks": [
     {
-     "text": "星厨传承——以师承为信用，",
+     "text": "星厨传承——以师承为信用。",
      "start": 0.0,
-     "end": 2.846,
+     "end": 3.207,
      "absoluteStart": 99.948,
-     "absoluteEnd": 102.794
+     "absoluteEnd": 103.155
     },
     {
-     "text": "用 TRAE 构建。",
-     "start": 2.846,
-     "end": 5.035,
-     "absoluteStart": 102.794,
-     "absoluteEnd": 104.983
-    },
-    {
-     "text": "世界很大，放手去造。",
-     "start": 5.035,
-     "end": 7.224,
-     "absoluteStart": 104.983,
-     "absoluteEnd": 107.172
+     "text": "让每一门手艺，都有出处。",
+     "start": 3.207,
+     "end": 6.168,
+     "absoluteStart": 103.155,
+     "absoluteEnd": 106.116
     }
    ],
    "cues": [
     {
      "id": "brand",
-     "offset": 6.348,
-     "absoluteTime": 106.296
+     "offset": 3.207,
+     "absoluteTime": 103.155
     }
    ]
   }
