@@ -52,9 +52,9 @@ npm run lint       # oxlint
 
 ## 参赛冲刺清单
 
-- [ ] 修复 GitHub Pages 部署，拿到评委可访问的在线链接（`.github/workflows/deploy-pages.yml` 已就绪）
-- [ ] 重写《项目计划书》：赛道三「社会公益」叙事（软创旧版留作素材）
-- [ ] 重做演示视频（旧片弃用）
+- [ ] **GitHub Pages 部署**：仓库已就绪（`deploy-pages.yml` + enablement 自动启用），但 GitHub 账号被平台静默风控（新旧仓库公众视角 404、git 推送被拒）——需向 [GitHub Support](https://support.github.com/request) 申诉解封，或换账号后 `git push`（workflow 自动部署；本地 `star-chef-trae` 仓库已建好备用）
+- [x] **演示视频成片**：`参赛材料/视频制作/星厨传承-参赛演示片.mp4`（1 分 48 秒 · 解说+混音 · 全套制作源文件同目录）
+- [x] 《项目计划书》赛道三版草稿：`参赛材料/项目计划书_草稿.md`（`[待团队填写]` 项需补团队信息）
 - [ ] 整理 TRAE 对话式开发过程证据
 - [ ] 12.25 前官方论坛提交
 
