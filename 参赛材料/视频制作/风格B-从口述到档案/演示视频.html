@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>星厨传承 · 参赛演示片（风格B · 从口述到档案）</title>
+<!-- 自托管字体（引用主版资源）：Noto Serif SC（400/600/900 子集）+ Fraunces 可变字重 -->
+<link rel="stylesheet" href="../_narration/fonts/400.css">
+<link rel="stylesheet" href="../_narration/fonts/600.css">
+<link rel="stylesheet" href="../_narration/fonts/900.css">
+<style>
+  @font-face{
+    font-family:'Fraunces';
+    src:url('../_narration/_lib/fraunces-var.woff2') format('woff2-variations');
+    font-weight:100 900; font-style:normal; font-display:block;
+  }
+  html,body{margin:0;padding:0;background:#11100d;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column}
+  #root{overflow:hidden}
+  *{box-sizing:border-box}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+  // 确定性渲染通道：?rec=1 时以「录制模式」挂载——时间由 window.__seek(t) 驱动，可逐帧定位
+  if (location.search.indexOf("rec=1") !== -1) { window.__recording = true; window.__seekRender = true; }
+</script>
+<script src="../_narration/_lib/react.production.min.js"></script>
+<script src="../_narration/_lib/react-dom.production.min.js"></script>
+<script src="../_narration/_lib/babel.min.js"></script>
+<script src="_narration/timeline_inline.js"></script>
+<script type="text/babel">
+/**
+ * 风格B · 从口述到档案 —— Stripe 式因果双联舞台
+ *
+ * 视觉合同（design-demos/dir-2.html）：
+ *   双联分屏（左联=因 / 右联=果）· 一根流程线贯穿全片 · 干净编辑风 · 纸墨+朱红点缀
+ * 叙事引擎是「过程」本身：口述涌出 → 因果转化 → 档案显影 → 谱链/匹配/社区同构分叉。
+ *
+ * 技术约定：
+ *   - 全部时间常量来自 _narration/timeline_inline.js（build_timeline.py 实测，cue/beat 词级对齐）
+ *   - 所有动画都是 time 的纯函数（?rec=1 + window.__seek 确定性渲染）
+ *   - 摄像机每镜持续缓推（settle 后仍保持 0.5-1.5%/s 单调推进），镜内动效错峰
+ *   - chunks 由 build_timeline.py 按实测时长在 Python 侧切好（规避主版 s.duration NaN 坑）
+ */
+
+const { useState, useEffect, useMemo, useRef } = React;
+
+/* ───────── NarrationStageLib（内联精简版：file:// 下 XHR 被禁，必须内联） ───────── */
+const NarrationStageLib = (() => {
+  const NarrationContext = React.createContext({ time: 0, scene: null, sceneTime: 0 });
+
+  function NarrationStage({ timeline, audioSrc, width = 1920, height = 1080, background = '#0e0e0e', controls = true, children }) {
+    const audioRef = React.useRef(null);
+    const [time, setTime] = React.useState(0);
+    const [playing, setPlaying] = React.useState(false);
+    const recording = typeof window !== 'undefined' && window.__recording === true;
+
+    React.useEffect(() => {
+      if (typeof window === 'undefined') return;
+      window.__totalDuration = timeline.totalDuration;
+      window.__ready = true;
+    }, [timeline.totalDuration]);
+
+    React.useEffect(() => {
+      let raf;
+      if (recording) {
+        if (typeof window !== 'undefined' && window.__seekRender) {
+          window.__seek = (t) => setTime(Math.min(t, timeline.totalDuration));
+          return;
+        }
+        let startedAt = null;
+        const tick = (now) => {
+          if (startedAt === null) startedAt = now;
+          setTime(Math.min((now - startedAt) / 1000, timeline.totalDuration));
+          raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+        if (typeof window !== 'undefined') {
+          window.__seek = (t) => { startedAt = performance.now() - t * 1000; setTime(t); };
+        }
+      } else {
+        const tick = () => {
+          if (audioRef.current && !audioRef.current.paused) setTime(audioRef.current.currentTime);
+          raf = requestAnimationFrame(tick);
+        };
+        tick();
+      }
+      return () => cancelAnimationFrame(raf);
+    }, [recording, timeline.totalDuration]);
+
+    const currentScene = React.useMemo(() => {
+      if (!timeline.scenes) return null;
+      for (let i = 0; i < timeline.scenes.length; i++) {
+        const s = timeline.scenes[i];
+        const next = timeline.scenes[i + 1];
+        if (time >= s.start && (!next || time < next.start)) return s;
+      }
+      return timeline.scenes[0];
+    }, [time, timeline.scenes]);
+
+    const ctx = { time, scene: currentScene, sceneTime: currentScene ? Math.max(0, time - currentScene.start) : 0, timeline };
+
+    const handlePlayPause = () => {
+      if (!audioRef.current) return;
+      if (audioRef.current.paused) { audioRef.current.play(); setPlaying(true); }
+      else { audioRef.current.pause(); setPlaying(false); }
+    };
+    const handleSeek = (e) => { if (audioRef.current) { const t = parseFloat(e.target.value); audioRef.current.currentTime = t; setTime(t); } };
+
+    return (
+      <NarrationContext.Provider value={ctx}>
+        <div style={{ position: 'relative', width, height, background, overflow: 'hidden', color: '#1A1714' }}>
+          {children}
+        </div>
+        {!recording && <audio ref={audioRef} src={audioSrc} preload="auto" />}
+        {!recording && controls && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: '#1a1a1a', color: '#ddd', fontFamily: 'monospace', fontSize: 13, width, boxSizing: 'border-box' }}>
+            <button onClick={handlePlayPause} style={{ padding: '6px 14px', background: '#fff', color: '#000', border: 0, borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
+              {playing ? '❚❚ Pause' : '▶ Play'}
+            </button>
+            <input type="range" min={0} max={timeline.totalDuration} step={0.01} value={time} onChange={handleSeek} style={{ flex: 1 }} />
+            <span style={{ minWidth: 110, textAlign: 'right' }}>{time.toFixed(2)} / {timeline.totalDuration.toFixed(2)}s</span>
+            <span style={{ padding: '4px 10px', background: '#2a2a2a', borderRadius: 4, minWidth: 120, textAlign: 'center' }}>{currentScene ? currentScene.id : '—'}</span>
+          </div>
+        )}
+      </NarrationContext.Provider>
+    );
+  }
+
+  function useNarration() { return React.useContext(NarrationContext); }
+
+  function visualLen(s) { let n = 0; for (const ch of s) n += /[a-zA-Z0-9 .,'":;\-]/.test(ch) ? 0.5 : 1; return n; }
+  function splitChunkToLines(text, maxLen = 13) {
+    const lines = []; const sentences = []; let buf = '';
+    for (const ch of text) { buf += ch; if ('。！？\n'.includes(ch)) { if (buf.trim()) sentences.push(buf.trim()); buf = ''; } }
+    if (buf.trim()) sentences.push(buf.trim());
+    for (const sent of sentences) {
+      if (visualLen(sent) <= maxLen) { lines.push(sent); continue; }
+      const parts = []; let pbuf = '';
+      for (const ch of sent) { pbuf += ch; if ('，、；：'.includes(ch)) { parts.push(pbuf); pbuf = ''; } }
+      if (pbuf) parts.push(pbuf);
+      let merged = '';
+      for (const p of parts) {
+        if (visualLen(merged) + visualLen(p) <= maxLen) merged += p;
+        else { if (merged) lines.push(merged); merged = p; }
+      }
+      if (merged) {
+        if (visualLen(merged) <= maxLen) lines.push(merged);
+        else { let hbuf = ''; for (const ch of merged) { hbuf += ch; if (visualLen(hbuf) >= maxLen) { lines.push(hbuf); hbuf = ''; } } if (hbuf) lines.push(hbuf); }
+      }
+    }
+    return lines.filter(l => l.trim());
+  }
+
+  /** Subtitles · 白光晕深墨字字幕（chunks 由 build_timeline 实测切好） */
+  function Subtitles({ bottom = 64, fontSize = 30, color = '#1a1a1a', haloColor = 'rgba(245,240,230,0.92)', maxLen = 13 } = {}) {
+    const { time, scene } = React.useContext(NarrationContext);
+    if (!scene || !scene.chunks) return null;
+    const active = scene.chunks.find(c => time >= c.absoluteStart && time < c.absoluteEnd);
+    if (!active) return null;
+    const lines = splitChunkToLines(active.text, maxLen);
+    if (lines.length === 0) return null;
+    const totalLen = lines.reduce((s, l) => s + visualLen(l), 0);
+    const chunkDur = active.absoluteEnd - active.absoluteStart;
+    let acc = active.absoluteStart;
+    let activeLine = lines[lines.length - 1];
+    let lineStart = active.absoluteStart;
+    for (const line of lines) {
+      const dur = (visualLen(line) / totalLen) * chunkDur;
+      if (time < acc + dur) { activeLine = line; lineStart = acc; break; }
+      acc += dur;
+    }
+    const lineProg = Math.min(1, (time - lineStart) / 0.15);
+    return (
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom, display: 'flex', justifyContent: 'center', pointerEvents: 'none', zIndex: 80 }}>
+        <div key={lineStart} style={{
+          fontFamily: '"Noto Sans SC","PingFang SC",sans-serif',
+          fontSize, fontWeight: 600, color,
+          letterSpacing: '0.04em', lineHeight: 1.25, textAlign: 'center',
+          textShadow: `0 0 6px ${haloColor}, 0 0 12px ${haloColor}, 0 1px 2px rgba(255,255,255,0.5)`,
+          opacity: lineProg, transform: `translateY(${(1 - lineProg) * 4}px)`,
+        }}>{activeLine}</div>
+      </div>
+    );
+  }
+
+  return { NarrationStage, useNarration, Subtitles, splitChunkToLines, visualLen };
+})();
+
+/* ───────── 时间轴（实测，来自 timeline_inline.js） ───────── */
+const { NarrationStage, useNarration, Subtitles } = NarrationStageLib;
+const TL = window.__TL;
+
+if (TL) {
+  var TL_SCENES = TL.scenes.map(s => ({
+    ...s,
+    cuesMap: s.cues,
+    cues: Object.entries(s.cues).map(([id, absoluteTime]) => ({ id, absoluteTime })),
+  }));
+  var TL_RAW = { title: TL.title, totalDuration: TL.totalDuration, voiceover: TL.voiceover, scenes: TL_SCENES };
+  var SC = id => TL_SCENES.find(x => x.id === id);
+}
+
+/* ───────── 工具 ───────── */
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const expoOut = t => t >= 1 ? 1 : 1 - Math.pow(2, -10 * t);
+const PAPER = "#F5F0E6", INK = "#1A1714", VERM = "#B03A2E", MOSS = "#5B6B4F", GOLD = "#C9A24A";
+const SERIF = "'Noto Serif SC','Fraunces','Songti SC',serif";
+const NUMF = "'Fraunces','Noto Serif SC',serif";
+
+const useSceneInfo = () => {
+  const { time, scene } = useNarration();
+  const idx = TL_SCENES.findIndex(s => s.id === scene?.id);
+  const cur = scene || TL_SCENES[0];
+  const prev = TL_SCENES[Math.max(0, idx - 1)];
+  const st = time - cur.start;
+  const settle = expoOut(clamp(st / 0.9));
+  const prog = clamp(st / cur.duration);
+  return { time, cur, prev, st, settle, prog, idx };
+};
+/* 场景内 cue / beat 的绝对秒（实测） */
+const ct = (cur, id) => (cur.cuesMap && cur.cuesMap[id] !== undefined) ? cur.cuesMap[id] : 1e9;
+const bt = (cur, name) => (cur.beats && cur.beats[name] !== undefined) ? cur.beats[name] : 1e9;
+/* 跨场景取 beat：兼容短 id（"s05" → "s05-lineage"） */
+function B(sid, name) {
+  const s = TL_SCENES.find(x => x.id === sid || x.id.startsWith(sid + "-"));
+  return s && s.beats ? (s.beats[name] ?? 1e9) : 1e9;
+}
+
+/* 跨场景引用的全局节拍 */
+const B1 = SC("s01-hook").beats, B2 = SC("s02-problem").beats, B3 = SC("s03-turn").beats, B4 = SC("s04-card").beats;
+/* 口述 chips 的全局出现时刻（s01 词级对齐） */
+const CHIP_T = [B1.wave + 0.5, B1.wave + 1.4, B1.chunk1, B1.chunk2 + 0.1, B1.chunk3 + 0.1];
+/* 档案卡行的落地时刻（s03 航班 + s04 词级对齐） */
+const ROW_T = {
+  years: B3.flow + 0.78,          // 航班0「三十年刀工」落地
+  hand: B3.flow + 1.44,           // 航班1「文思豆腐」落地
+  apprent: B3.flow + 2.10,        // 航班2「带过20多个徒弟」落地
+  intent: B3.flow + 2.55,
+};
+
+/* ───────── 场景几何键 ───────── */
+/* 口述面板 */
+const TALK_KEYS = {
+  "s01-hook":      { x: 26, y: 54, w: 700, op: 1 },
+  "s02-problem":   { x: 17, y: 50, w: 560, op: 0.4 },
+  "s03-turn":      { x: 25, y: 53, w: 680, op: 1 },
+  "s04-card":      { x: 18, y: 50, w: 540, op: 0.75 },
+  "s05-lineage":   { x: 10, y: 50, w: 480, op: 0 },
+  "s06-source":    { x: 10, y: 50, w: 480, op: 0 },
+  "s07-jobs":      { x: 12, y: 50, w: 480, op: 0 },
+  "s08-community": { x: 12, y: 50, w: 480, op: 0 },
+  "s09-vision":    { x: 20, y: 50, w: 480, op: 0 },
+  "s10-merge":     { x: 40, y: 46, w: 520, op: 0.9 },
+  "s11-end":       { x: 40, y: 46, w: 520, op: 0 },
+};
+/* 简历面板 */
+const RESUME_KEYS = {
+  "s01-hook":      { x: 75, y: 54, w: 520, op: 1 },
+  "s02-problem":   { x: 66, y: 49, w: 640, op: 1 },
+  "s03-turn":      { x: 69, y: 51, w: 640, op: 0 },
+  "s04-card":      { x: 69, y: 51, w: 640, op: 0 },
+  "s05-lineage":   { x: 69, y: 51, w: 640, op: 0 },
+  "s06-source":    { x: 69, y: 51, w: 640, op: 0 },
+  "s07-jobs":      { x: 69, y: 51, w: 640, op: 0 },
+  "s08-community": { x: 69, y: 51, w: 640, op: 0 },
+  "s09-vision":    { x: 69, y: 51, w: 640, op: 0 },
+  "s10-merge":     { x: 50, y: 45, w: 560, op: 0 },
+  "s11-end":       { x: 50, y: 45, w: 560, op: 0 },
+};
+/* 档案卡（hero） */
+const CARD_KEYS = {
+  "s01-hook":      { x: 69, y: 51, w: 640, op: 0, phase: 1 },
+  "s02-problem":   { x: 69, y: 51, w: 640, op: 0, phase: 1 },
+  "s03-turn":      { x: 70, y: 51, w: 640, op: 1, phase: 1 },
+  "s04-card":      { x: 71, y: 52, w: 690, op: 1, phase: 3 },
+  "s05-lineage":   { x: 18, y: 50, w: 430, op: 1, phase: 3 },
+  "s06-source":    { x: 17, y: 66, w: 380, op: 0.45, phase: 3 },
+  "s07-jobs":      { x: 21, y: 50, w: 450, op: 1, phase: 3 },
+  "s08-community": { x: 15, y: 78, w: 400, op: 0.9, phase: 3 },
+  "s09-vision":    { x: 30, y: 52, w: 450, op: 1, phase: 3 },
+  "s10-merge":     { x: 50, y: 45, w: 560, op: 1, phase: 3 },
+  "s11-end":       { x: 30, y: 50, w: 420, op: 0, phase: 3 },
+};
+/* 摄像机：每镜持续缓推 + 缓移（settle 后保持单调推进） */
+const CAM_KEYS = {
+  "s01-hook":      { z0: 1.00, rate: 0.008, ox: 50, oy: 47, ox2: 53, oy2: 48 },
+  "s02-problem":   { z0: 1.02, rate: 0.010, ox: 55, oy: 50, ox2: 60, oy2: 52 },
+  "s03-turn":      { z0: 1.03, rate: 0.010, ox: 50, oy: 48, ox2: 55, oy2: 50 },
+  "s04-card":      { z0: 1.05, rate: 0.008, ox: 60, oy: 50, ox2: 66, oy2: 50 },
+  "s05-lineage":   { z0: 1.03, rate: 0.009, ox: 52, oy: 48, ox2: 58, oy2: 48 },
+  "s06-source":    { z0: 1.06, rate: 0.008, ox: 55, oy: 46, ox2: 60, oy2: 45 },
+  "s07-jobs":      { z0: 1.04, rate: 0.009, ox: 55, oy: 48, ox2: 60, oy2: 48 },
+  "s08-community": { z0: 1.03, rate: 0.008, ox: 54, oy: 46, ox2: 59, oy2: 47 },
+  "s09-vision":    { z0: 1.04, rate: 0.009, ox: 50, oy: 46, ox2: 56, oy2: 46 },
+  "s10-merge":     { z0: 1.02, rate: 0.010, ox: 50, oy: 46, ox2: 50, oy2: 46 },
+  "s11-end":       { z0: 1.04, rate: 0.005, ox: 50, oy: 45, ox2: 50, oy2: 45 },
+};
+const camEnd = c => c.z0 * (1 + c.rate * c.duration);
+/* 中央流程线（双联分隔） */
+const FLOW_KEYS = {
+  "s01-hook": [52, 0.45], "s02-problem": [38, 0.32], "s03-turn": [50, 1.0], "s04-card": [45, 0.85],
+  "s05-lineage": [30.5, 0.55], "s06-source": [35, 0.5], "s07-jobs": [34, 0.55], "s08-community": [30, 0.5],
+  "s09-vision": [48, 0.4], "s10-merge": [50, 0.8], "s11-end": [50, 0],
+};
+/* 双联栏题（因 / 果） */
+const COL_KEYS = {
+  "s01-hook":      ["因 · 一门手艺", "果 · 一张简历", 1],
+  "s02-problem":   ["因 · 一门手艺", "果 · 一张简历", 1],
+  "s03-turn":      ["因 · 口述", "果 · 档案", 1],
+  "s04-card":      ["因 · 口述", "果 · 档案", 1],
+  "s05-lineage":   ["因 · 档案", "果 · 师承谱", 1],
+  "s06-source":    ["因 · 师承", "果 · 出处", 1],
+  "s07-jobs":      ["因 · 档案", "果 · 匹配", 1],
+  "s08-community": ["因 · 师门", "果 · 同行", 1],
+  "s09-vision":    ["因 · 一门手艺", "果 · 被看见", 1],
+  "s10-merge":     ["因 · 口说", "果 · 有凭", 1],
+  "s11-end":       ["", "", 0],
+};
+/* 暗角强度 */
+const VIGN = {
+  "s01-hook": .30, "s02-problem": .32, "s03-turn": .26, "s04-card": .28, "s05-lineage": .28,
+  "s06-source": .30, "s07-jobs": .28, "s08-community": .28, "s09-vision": .30, "s10-merge": .30, "s11-end": .34,
+};
+
+const useDividerX = () => {
+  const { cur, prev, settle } = useSceneInfo();
+  const k = FLOW_KEYS[cur.id], kp = FLOW_KEYS[prev.id] || k;
+  return lerp(kp[0], k[0], settle);
+};
+
+const morphKeys = KEYS => {
+  const { cur, prev, settle } = useSceneInfo();
+  const b = KEYS[cur.id], a = KEYS[prev.id] || b;
+  return {
+    x: lerp(a.x, b.x, settle), y: lerp(a.y, b.y, settle), w: lerp(a.w, b.w, settle),
+    op: lerp(a.op ?? 1, b.op ?? 1, settle), phase: b.phase, b,
+  };
+};
+const place = (k, extra = {}) => ({
+  position: "absolute", left: `${k.x}%`, top: `${k.y}%`, width: k.w,
+  transform: "translate(-50%,-50%)", ...extra,
+});
+
+/* ───────── 舞台家具：纸纹 + 聚光/暗角 ───────── */
+function Atmosphere() {
+  const { time, cur, prev, settle } = useSceneInfo();
+  const a = lerp(VIGN[prev.id] ?? .3, VIGN[cur.id] ?? .3, settle);
+  const drift = Math.sin(time * 0.14) * 10;
+  return (
+    <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 60 }}>
+      <svg width="1920" height="1080" style={{ position: "absolute", opacity: .045, transform: `translate(${drift}px,${Math.cos(time * 0.1) * 6}px)` }}>
+        <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" /></filter>
+        <rect width="100%" height="100%" filter="url(#grain)" />
+      </svg>
+      <div style={{
+        position: "absolute", inset: 0,
+        background: `radial-gradient(ellipse 60% 64% at 50% 44%, rgba(255,250,238,.05) 0%, rgba(255,250,238,0) 55%, rgba(12,9,6,${a}) 92%)`,
+      }} />
+    </div>
+  );
+}
+
+/* ───────── 中央流程线（贯穿全片的因果线） ───────── */
+function FlowLine() {
+  const { time, cur } = useSceneInfo();
+  const x = useDividerX();
+  const k = FLOW_KEYS[cur.id];
+  const o = k[1];
+  if (o <= 0.01) return null;
+  const flowT = B3.flow;
+  const boost = Math.max(0, 1 - (time - (flowT + 0.05)) / 1.6);   // s03 点火增亮
+  const speed = 9 * (1 + boost * 2.2);
+  const chevs = [0, 1, 2].map(i => {
+    const ph = ((time * (0.05 + 0.045 * boost)) + i / 3) % 1;
+    return { y: 14 + ph * 72, a: Math.sin(ph * Math.PI) * (0.55 + 0.45 * boost) };
+  });
+  const hot = boost > 0.06;
+  return (
+    <div style={{ position: "absolute", left: `${x}%`, top: "13%", bottom: "11%", width: 0, opacity: Math.min(1, o * (1 + boost * 0.5)), zIndex: 12 }}>
+      <svg width="44" height="100%" viewBox="0 0 44 800" preserveAspectRatio="none"
+        style={{ position: "absolute", left: -22, top: 0, height: "100%", overflow: "visible" }}>
+        <line x1="22" y1="0" x2="22" y2="800" stroke={hot ? "rgba(176,58,46,.55)" : "rgba(26,23,20,.3)"}
+          strokeWidth="1.6" strokeDasharray="3 7" strokeDashoffset={-time * speed} />
+        {chevs.map((c, i) => (
+          <path key={i} d="M17 -5 L27 0 L17 5" transform={`translate(0 ${(c.y / 100) * 800})`}
+            fill="none" stroke={hot ? VERM : "rgba(26,23,20,.5)"} strokeWidth="2.2"
+            opacity={Math.min(1, c.a)} strokeLinecap="round" strokeLinejoin="round" />
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+/* ───────── 双联栏题（因 / 果） ───────── */
+function ColumnHeads() {
+  const { cur, prev, settle } = useSceneInfo();
+  const k = COL_KEYS[cur.id], kp = COL_KEYS[prev.id] || k;
+  const x = useDividerX();
+  if (k[2] <= 0 && kp[2] <= 0) return null;
+  const Head = ({ txt, cx, op, rise }) => txt ? (
+    <div style={{
+      position: "absolute", left: `${cx}%`, top: "6.0%", transform: `translateX(-50%) translateY(${rise * 8}px)`,
+      opacity: op, fontFamily: SERIF, fontSize: 15, letterSpacing: 5, whiteSpace: "nowrap", zIndex: 14,
+    }}>
+      <span style={{ color: VERM, fontWeight: 600 }}>{txt.slice(0, 1)}</span>
+      <span style={{ color: "rgba(26,23,20,.55)" }}>{txt.slice(1)}</span>
+    </div>
+  ) : null;
+  return (
+    <>
+      <Head txt={kp[0]} cx={x / 2} op={(1 - settle) * kp[2] * .9} rise={-1} />
+      <Head txt={k[0]} cx={x / 2} op={settle * k[2]} rise={1 - settle} />
+      <Head txt={kp[1]} cx={x + (100 - x) / 2} op={(1 - settle) * kp[2] * .9} rise={-1} />
+      <Head txt={k[1]} cx={x + (100 - x) / 2} op={settle * k[2]} rise={1 - settle} />
+    </>
+  );
+}
+
+/* ───────── 纸面文档框（编辑风装裱） ───────── */
+const SheetFrame = ({ w, h, label, tag, children, dim = 1 }) => (
+  <div style={{ position: "relative", width: w, height: h }}>
+    <div style={{
+      position: "absolute", inset: 0, background: "#FBF7EC",
+      border: "1.5px solid rgba(26,23,20,.75)", borderRadius: 6,
+      boxShadow: "0 22px 60px rgba(15,12,8,.26)", opacity: dim,
+    }} />
+    <div style={{
+      position: "absolute", left: -1, top: -1, padding: "7px 16px", zIndex: 2,
+      border: "1px solid rgba(26,23,20,.35)", borderTopLeftRadius: 6, background: "rgba(26,23,20,.045)",
+      fontSize: 12, letterSpacing: 4, color: "rgba(26,23,20,.6)", fontFamily: SERIF, whiteSpace: "nowrap",
+    }}>{label}{tag && <span style={{ color: VERM }}> · {tag}</span>}</div>
+    {children}
+  </div>
+);
+
+/* ───────── 左联 · 口述面板（声波 + 大白话碎块） ───────── */
+const CHIPS = ["淮扬菜 · 老师傅", "周慕白 · 扬州人", "三十年刀工", "文思豆腐 · 大煮干丝", "带过 20 多个徒弟"];
+function TalkDoc() {
+  const { time, cur, st } = useSceneInfo();
+  const k = morphKeys(TALK_KEYS);
+  let x = k.x, y = k.y, w = k.w, op = k.op;
+  if (cur.id === "s10-merge") {   // s10：口述面板被档案「吸收」——合流高潮
+    const p = clamp(st / 1.9);
+    x = lerp(40, 50, p); y = lerp(46, 47.5, p); w = lerp(520, 430, expoOut(p));
+    op = 0.9 * (1 - clamp((st - 1.5) / 0.85));
+  }
+  if (op <= 0.01) return null;
+  const waveOn = time >= B1.wave - 0.1 && time < cur.end - 0.12 && cur.id !== "s10-merge";
+  const h = Math.round(w * 0.58);
+  const fs = Math.max(14.5, w * 0.0265);
+  return (
+    <div style={place({ x, y, w, op }, { zIndex: 20, opacity: op })}>
+      <SheetFrame w={w} h={h} label="口述" tag="语音 · 大白话">
+        <div style={{ position: "absolute", left: 0, right: 0, top: 46, height: 72, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, opacity: cur.id === "s10-merge" ? 0.3 : 1 }}>
+          {Array.from({ length: 24 }).map((_, i) => {
+            const base = Math.abs(Math.sin(i * 1.7 + 1.2)) * 0.72 + 0.28;
+            const wob = waveOn ? (Math.abs(Math.sin(time * 4.2 + i * 0.9)) * 0.75 + 0.25) : 0.14;
+            return <div key={i} style={{ width: 4, borderRadius: 2, background: i % 3 === 0 ? VERM : "rgba(26,23,20,.5)", height: 12 + 52 * base * wob }} />;
+          })}
+        </div>
+        <div style={{ position: "absolute", left: 26, right: 18, top: 128, display: "flex", flexWrap: "wrap", gap: 10 }}>
+          {CHIPS.map((c, i) => {
+            const p = expoOut(clamp((time - CHIP_T[i]) / 0.5));
+            if (p <= 0) return null;
+            const flew = cur.id === "s03-turn" && i >= 2 && time >= ROW_T[["years", "hand", "apprent"][i - 2]];
+            return (
+              <span key={i} style={{
+                display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 15px",
+                background: flew ? "rgba(26,23,20,.03)" : "rgba(26,23,20,.05)",
+                border: flew ? "1px dashed rgba(26,23,20,.3)" : "1px solid rgba(26,23,20,.42)",
+                borderRadius: 4, fontFamily: SERIF, fontSize: fs, color: flew ? "rgba(26,23,20,.45)" : INK,
+                opacity: p, transform: `translateY(${(1 - p) * 10}px)`,
+              }}>
+                {c}
+                {flew && <span style={{ color: MOSS, fontSize: 13, fontWeight: 600 }}>已入档 ✓</span>}
+              </span>
+            );
+          })}
+        </div>
+        <div style={{ position: "absolute", left: 26, bottom: 12, fontFamily: SERIF, fontSize: 13, fontStyle: "italic", color: "rgba(26,23,20,.45)" }}>
+          说得出来的，都在这里。
+        </div>
+      </SheetFrame>
+    </div>
+  );
+}
+
+/* ───────── 右联 · 简历纸（写了又停） ───────── */
+function ResumeDoc() {
+  const { time, cur } = useSceneInfo();
+  const k = morphKeys(RESUME_KEYS);
+  if (k.op <= 0.01) return null;
+  const penT = B2.pen;
+  const nameP = expoOut(clamp((time - (SC("s01-hook").start + 0.6)) / 0.5));
+  const labelP = expoOut(clamp((time - (penT - 1.0)) / 0.5));
+  const penIn = time >= penT - 0.7;
+  const stuck = time >= penT;
+  const tremble = penIn ? Math.sin(time * 9) * (stuck ? 1.7 : 0.5) : 0;
+  const dots = time >= penT + 0.9;
+  const anno = time >= penT + 1.4;
+  const h = Math.round(k.w * 0.74);
+  return (
+    <div style={place(k, { zIndex: 16, opacity: k.op })}>
+      <SheetFrame w={k.w} h={h} label="简历" tag="写不出">
+        <div style={{ position: "absolute", left: 30, right: 26, top: 54, fontFamily: SERIF }}>
+          <div style={{ fontSize: Math.max(17, k.w * 0.036), color: "rgba(26,23,20,.85)", opacity: nameP }}>姓名：周慕白</div>
+          <div style={{ position: "relative", marginTop: 24, fontSize: Math.max(17, k.w * 0.036), color: INK, height: 34, opacity: labelP }}>
+            <span>擅长：</span>
+            <span style={{ display: "inline-block", width: k.w * 0.36, borderBottom: "1px dashed rgba(26,23,20,.5)", height: 22, verticalAlign: "-4px" }} />
+            {penIn && (
+              <svg width="26" height="30" viewBox="0 0 26 30" style={{ position: "absolute", left: k.w * 0.14, top: -18, transform: `translate(${tremble}px,0)` }}>
+                <path d="M4 2 L18 24 L13 25 L14 29 L9 26 L4 24 Z" fill={INK} stroke={PAPER} strokeWidth="1" />
+              </svg>
+            )}
+            {dots && <span style={{ marginLeft: 12, letterSpacing: 5, color: "rgba(26,23,20,.5)", fontSize: 16 }}>···</span>}
+          </div>
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{ marginTop: 28, borderBottom: "1px dashed rgba(26,23,20,.42)", height: 14, width: `${74 - i * 12}%` }} />
+          ))}
+          {anno && (
+            <div style={{ marginTop: 24, fontSize: Math.max(13.5, k.w * 0.027), color: VERM, fontStyle: "italic", opacity: expoOut(clamp((time - penT - 1.4) / 0.6)) }}>
+              写了又停——手艺没有格子可填。
+            </div>
+          )}
+        </div>
+      </SheetFrame>
+    </div>
+  );
+}
+
+/* ───────── 大字：他的手艺，简历装不下（s02 两拍砸下） ───────── */
+function BigTitle() {
+  const { time, cur } = useSceneInfo();
+  if (cur.id !== "s02-problem") return null;
+  const p1 = expoOut(clamp((time - B2.big1) / 0.55));
+  const p2 = expoOut(clamp((time - B2.big2) / 0.6));
+  const out = clamp((time - (cur.end - 0.55)) / 0.55);
+  if (p1 <= 0) return null;
+  return (
+    <div style={{ position: "absolute", left: 0, right: 0, top: "77%", textAlign: "center", fontFamily: SERIF, opacity: 1 - out, filter: `blur(${out * 10}px)`, zIndex: 32, whiteSpace: "nowrap" }}>
+      <span style={{ fontSize: 78, fontWeight: 900, color: INK, letterSpacing: 4, opacity: p1, display: "inline-block", transform: `scale(${0.94 + p1 * 0.06})` }}>他的手艺，</span>
+      <span style={{ fontSize: 78, fontWeight: 900, color: VERM, letterSpacing: 4, opacity: p2, display: "inline-block", transform: `scale(${0.94 + p2 * 0.06})`, marginLeft: 8 }}>简历装不下。</span>
+    </div>
+  );
+}
+
+/* ───────── 标语：会说话，就会写简历（s03 底部落定） ───────── */
+function SloganBar() {
+  const { time, cur } = useSceneInfo();
+  if (cur.id !== "s03-turn") return null;
+  const t0 = B3.slogan;
+  const p = expoOut(clamp((time - t0 - 0.15) / 0.6));
+  const draw = clamp((time - t0 - 0.5) / 0.7);
+  const out = clamp((time - (cur.end - 0.55)) / 0.55);
+  if (p <= 0) return null;
+  return (
+    <div style={{ position: "absolute", left: "50%", top: "80.5%", transform: `translateX(-50%) translateY(${(1 - p) * 12}px)`, fontFamily: SERIF, opacity: p * (1 - out), zIndex: 32, textAlign: "center", whiteSpace: "nowrap" }}>
+      <div style={{ fontSize: 42, fontWeight: 600, color: INK, letterSpacing: 6 }}>
+        会说话，就会写简历<span style={{ color: VERM }}>。</span>
+      </div>
+      <div style={{ height: 3, width: `${expoOut(draw) * 100}%`, background: VERM, margin: "10px auto 0", borderRadius: 2 }} />
+    </div>
+  );
+}
+
+/* ───────── 因果航班（s03：口述碎块飞过中线，落进档案） ───────── */
+function FlowCross() {
+  const { time, cur } = useSceneInfo();
+  if (cur.id !== "s03-turn") return null;
+  const flights = [
+    { j: 0, sx: 24, sy: 58, tx: 65, ty: 51.5, label: "三十年刀工" },
+    { j: 1, sx: 27, sy: 61.5, tx: 65, ty: 55.5, label: "文思豆腐 · 大煮干丝" },
+    { j: 2, sx: 23, sy: 65, tx: 65, ty: 59.5, label: "带过 20 多个徒弟" },
+  ];
+  return (
+    <>
+      {flights.map((f, idx) => {
+        const t0 = B3.flow + f.j * 0.66;
+        const raw = (time - t0) / 0.78;
+        if (raw <= 0 || raw >= 1.12) return null;   // 用未 clamp 的 raw 判退场（clamp 会封顶 1 导致航班滞留）
+        const p = clamp(raw);
+        const e = expoOut(p);
+        const x = lerp(f.sx, f.tx, e), y = lerp(f.sy, f.ty, e) - Math.sin(p * Math.PI) * 6;
+        const op = p < 0.88 ? 1 : 1 - (p - 0.88) / 0.24;
+        return (
+          <div key={idx} style={{ position: "absolute", left: `${x}%`, top: `${y}%`, transform: "translate(-50%,-50%)", opacity: op, zIndex: 44, whiteSpace: "nowrap" }}>
+            <span style={{ fontFamily: SERIF, fontSize: 17, padding: "8px 16px", background: INK, color: PAPER, borderRadius: 4, boxShadow: "0 12px 28px rgba(15,12,8,.4)", letterSpacing: 1 }}>
+              {f.label} →
+            </span>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+/* ───────── hero · 档案卡（口述→档案的「果」） ───────── */
+const CARD_ROWS = [
+  { k: "hand", label: "拿手菜", value: "文思豆腐 · 大煮干丝", t: ROW_T.hand, flash: B4.f2 },
+  { k: "years", label: "从业年限", value: "30 年", t: ROW_T.years, flash: B4.f4 },
+  { k: "apprent", label: "带徒", value: "20 多位", t: ROW_T.apprent, flash: B4.f5 },
+  { k: "intent", label: "求职意向", value: "高级酒店 · 淮扬顾问 / 行政总厨", t: ROW_T.intent, flash: null },
+];
+function ArchiveCard() {
+  const { time, cur } = useSceneInfo();
+  const k = morphKeys(CARD_KEYS);
+  if (k.op <= 0.01) return null;
+  const phase = k.phase;
+  const appearP = expoOut(clamp((time - SC("s03-turn").start - 0.35) / 0.7));
+  const headP = phase >= 1 ? appearP : 0;
+  const chip1P = expoOut(clamp((time - (SC("s03-turn").start + 0.8)) / 0.5));
+  const chip2P = expoOut(clamp((time - (SC("s03-turn").start + 1.05)) / 0.5));
+  const ageFlash = phase >= 3 ? clamp((time - B4.f1) / 0.9) : 0;
+  const ageGlow = ageFlash > 0 && ageFlash < 1;   // 只在闪光窗口内变朱红，过后回落
+  const bannerIn = phase >= 3 ? clamp((time - (B4.f5 + 1.0)) / 0.6) : 0;
+  const pct = phase >= 3
+    ? (cur.id === "s04-card" ? Math.round(75 * expoOut(clamp((time - (B4.f5 + 1.2)) / 0.9))) : 75)
+    : 0;
+  const sealP = phase >= 3 ? clamp((time - B4.seal) / 0.55) : 0;
+  const breath = 1 + Math.sin(time * 0.7) * 0.01;
+  const fs = v => Math.max(v * (k.w / 690), v * 0.62);   // 字号随卡宽缩放
+  return (
+    <div style={place(k, { zIndex: 24, opacity: k.op })}>
+      <div style={{ transform: `scale(${breath})`, willChange: "transform" }}>
+        {/* 完整度横幅（75% 持久，s10/s11 常驻） */}
+        {bannerIn > 0 && (
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+            border: "1px solid rgba(176,58,46,.5)", background: "rgba(176,58,46,.08)",
+            borderRadius: 4, padding: `${fs(9)}px ${fs(16)}px`, marginBottom: 12, fontFamily: SERIF,
+            opacity: bannerIn, transform: `translateY(${(1 - bannerIn) * 10}px)`,
+          }}>
+            <span style={{ fontSize: fs(16), color: VERM, letterSpacing: 1, whiteSpace: "nowrap" }}>
+              档案信息完整度 <b style={{ fontFamily: NUMF, fontSize: fs(20) }}>{pct}</b>%，建议补充：从业年份、师承
+            </span>
+            <span style={{ fontSize: fs(14), color: PAPER, background: VERM, borderRadius: 3, padding: "4px 12px", whiteSpace: "nowrap" }}>补充信息</span>
+          </div>
+        )}
+        {/* 卡体 */}
+        <div style={{
+          background: PAPER, border: "1.5px solid rgba(26,23,20,.8)", borderRadius: 6,
+          boxShadow: "0 20px 60px rgba(15,12,8,.3)", padding: `${fs(26)}px ${fs(30)}px ${fs(54)}px`, fontFamily: SERIF,
+          position: "relative",
+        }}>
+          <div style={{ fontSize: fs(42), fontWeight: 900, color: INK, lineHeight: 1.15, opacity: headP, transform: `translateY(${(1 - headP) * 8}px)` }}>
+            周慕白
+            <span style={{
+              fontSize: fs(19), fontWeight: 400, marginLeft: 10,
+              color: ageGlow ? VERM : "rgba(26,23,20,.55)",
+              textShadow: ageGlow ? `0 0 ${10 * (1 - ageFlash)}px rgba(176,58,46,.8)` : "none",
+            }}>· 55 岁</span>
+          </div>
+          <div style={{ margin: `${fs(10)}px 0 0`, height: fs(30) }}>
+            {chip1P > 0 && <span style={{
+              display: "inline-block", padding: `${fs(4)}px ${fs(13)}px`, borderRadius: 3, fontSize: fs(15),
+              color: VERM, border: "1px solid rgba(176,58,46,.55)", background: "rgba(176,58,46,.06)",
+              opacity: chip1P, transform: `translateY(${(1 - chip1P) * 8}px)`,
+              boxShadow: chip1P < 1 ? `0 0 ${14 * (1 - chip1P)}px rgba(176,58,46,.5)` : "none",
+            }}>淮扬菜</span>}
+            {chip2P > 0 && <span style={{
+              display: "inline-block", marginLeft: 8, padding: `${fs(4)}px ${fs(13)}px`, borderRadius: 3, fontSize: fs(15),
+              color: INK, border: "1px solid rgba(26,23,20,.45)", background: "rgba(26,23,20,.05)",
+              opacity: chip2P, transform: `translateY(${(1 - chip2P) * 8}px)`,
+            }}>扬州</span>}
+          </div>
+          <div style={{ fontSize: fs(12.5), color: "rgba(26,23,20,.45)", letterSpacing: 3, margin: `${fs(12)}px 0 ${fs(6)}px`, borderTop: "1px solid rgba(26,23,20,.16)", paddingTop: fs(10), opacity: headP }}>
+            档案 · 从口述生成
+          </div>
+          {CARD_ROWS.map(r => {
+            const p = expoOut(clamp((time - r.t) / 0.5));
+            if (p <= 0) {
+              return phase >= 1 && time < r.t ? (
+                <div key={r.k} style={{ height: fs(26), marginBottom: fs(9), background: "rgba(26,23,20,.07)", borderRadius: 2, width: "62%" }} />
+              ) : null;
+            }
+            const flash = r.flash ? clamp((time - r.flash) / 0.8) : 0;
+            const glowing = flash > 0 && flash < 1;
+            return (
+              <div key={r.k} style={{
+                display: "flex", alignItems: "baseline", gap: fs(10), marginBottom: fs(10),
+                fontSize: fs(17), opacity: p, transform: `translateY(${(1 - p) * 8}px)`,
+              }}>
+                <span style={{ color: "rgba(26,23,20,.5)", whiteSpace: "nowrap" }}>{r.label}</span>
+                <span style={{ flex: 1, borderBottom: "1px dotted rgba(26,23,20,.35)", transform: "translateY(-4px)" }} />
+                <span style={{
+                  color: glowing ? VERM : INK, fontWeight: glowing ? 600 : 400, whiteSpace: "nowrap",
+                  textShadow: glowing ? `0 0 ${12 * (1 - flash)}px rgba(176,58,46,.7)` : "none",
+                }}>{r.value}</span>
+              </div>
+            );
+          })}
+          {/* 朱印：AI 只提取 · 绝不编造 */}
+          {sealP > 0 && (
+            <div style={{
+              position: "absolute", right: fs(18), bottom: fs(10), transform: `rotate(-3deg) scale(${1.25 - sealP * 0.25})`,
+              border: `2px solid rgba(176,58,46,${0.85 * sealP})`, color: `rgba(176,58,46,${0.9 * sealP})`,
+              borderRadius: 4, padding: `${fs(6)}px ${fs(14)}px`, fontSize: fs(16), fontWeight: 600,
+              letterSpacing: 2, background: "rgba(176,58,46,.05)", fontFamily: SERIF, whiteSpace: "nowrap",
+            }}>
+              AI 只提取 · 绝不编造
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ───────── 右联 · 数字师承谱（s05：计数 + 谱链 + 真实头像 + 真实档案截图） ───────── */
+const PORTRAITS = [1, 2, 3, 4, 30, 31, 43].map(i => `../../../web/public/portraits/cyxh-dangdai-${i}.jpg`);
+function CropImg({ src, crop, width, style = {} }) {
+  const [cx, cy, cw, ch] = crop;
+  const scale = width / cw;
+  return (
+    <div style={{ position: "relative", width, height: ch * scale, overflow: "hidden", ...style }}>
+      <img src={src} alt="" style={{ position: "absolute", width: 1920 * scale, left: -cx * scale, top: -cy * scale, display: "block" }} />
+    </div>
+  );
+}
+function LineageSheet() {
+  const { time, cur } = useSceneInfo();
+  if (cur.id !== "s05-lineage") return null;
+  const intro = expoOut(clamp((time - cur.start - 0.25) / 0.9));
+  const exit = clamp((time - (cur.end - 0.55)) / 0.55);
+  const c1 = B("s05", "c1"), c2 = B("s05", "c2"), ch1 = B("s05", "chain1"), ch2 = B("s05", "chain2");
+  const n1238 = Math.round(1238 * expoOut(clamp((time - c1) / 1.0)));
+  const n262 = Math.round(262 * expoOut(clamp((time - c2) / 0.9)));
+  const n18 = Math.round(18 * expoOut(clamp((time - ch2) / 0.8)));
+  const p1 = expoOut(clamp((time - ch1 - 0.1) / 0.5));
+  const p2 = expoOut(clamp((time - ch1 + 0.45) / 0.5));
+  const p3 = expoOut(clamp((time - ch2) / 0.5));
+  const portP = expoOut(clamp((time - c1 - 1.15) / 0.9));
+  const W = 880, H = 630;
+  const Pill = ({ children, on, tone = "ink" }) => on > 0 ? (
+    <span style={{
+      display: "inline-flex", alignItems: "center", padding: "9px 18px", borderRadius: 4, fontFamily: SERIF, fontSize: 19,
+      border: tone === "verm" ? "1.5px solid rgba(176,58,46,.7)" : "1.5px solid rgba(26,23,20,.5)",
+      background: tone === "verm" ? "rgba(176,58,46,.07)" : "rgba(26,23,20,.04)",
+      color: tone === "verm" ? VERM : INK, fontWeight: tone === "verm" ? 600 : 400,
+      opacity: on, transform: `translateY(${(1 - on) * 10}px)`,
+    }}>{children}</span>
+  ) : null;
+  const Arrow = ({ on }) => on > 0 ? <span style={{ fontFamily: SERIF, color: "rgba(26,23,20,.5)", fontSize: 20, opacity: on, margin: "0 4px" }}>→</span> : null;
+  return (
+    <div style={{ position: "absolute", left: "54%", top: "50%", transform: `translate(-50%,-50%) translateX(${expoOut(exit) * 8}%)`, opacity: intro * (1 - exit), zIndex: 22 }}>
+      <SheetFrame w={W} h={H} label="数字师承谱" tag="LINEAGE">
+        <div style={{ position: "absolute", left: 34, right: 30, top: 56, fontFamily: SERIF }}>
+          {/* 计数行 */}
+          <div style={{ display: "flex", gap: 46, alignItems: "baseline" }}>
+            <div>
+              <span style={{ fontFamily: NUMF, fontSize: 52, fontWeight: 900, color: VERM, fontVariantNumeric: "tabular-nums" }}>{n1238.toLocaleString()}</span>
+              <span style={{ fontSize: 16, color: "rgba(26,23,20,.6)", marginLeft: 8 }}>位真实厨师</span>
+            </div>
+            <div style={{ width: 1, height: 40, background: "rgba(26,23,20,.18)", alignSelf: "center" }} />
+            <div>
+              <span style={{ fontFamily: NUMF, fontSize: 52, fontWeight: 900, color: INK, fontVariantNumeric: "tabular-nums" }}>{n262}</span>
+              <span style={{ fontSize: 16, color: "rgba(26,23,20,.6)", marginLeft: 8 }}>条师承可溯</span>
+            </div>
+          </div>
+          {/* 谱链 */}
+          <div style={{ display: "flex", alignItems: "center", marginTop: 26, minHeight: 48 }}>
+            <Pill on={p1}>魏兴国</Pill>
+            <Arrow on={p2} />
+            <Pill on={p2} tone="verm">史正良</Pill>
+            <Arrow on={p3} />
+            <Pill on={p3}>
+              门下 <b style={{ fontFamily: NUMF, fontSize: 24, margin: "0 2px" }}>{n18}</b> 人
+            </Pill>
+            <span style={{ marginLeft: "auto", fontSize: 14, color: "rgba(26,23,20,.5)", fontStyle: "italic", opacity: p3 }}>
+              川菜 · 第三代
+            </span>
+          </div>
+          {/* 底部：真实头像条 + 真实档案截图 */}
+          <div style={{ display: "flex", gap: 24, marginTop: 26, alignItems: "flex-start" }}>
+            <div style={{ flex: 1, opacity: portP, transform: `translateY(${(1 - portP) * 12}px)` }}>
+              <div style={{ display: "flex", gap: 8 }}>
+                {PORTRAITS.map((p, i) => (
+                  <img key={i} src={p} alt="" style={{
+                    width: 58, height: 58, objectFit: "cover", borderRadius: 4,
+                    border: "1px solid rgba(26,23,20,.35)", filter: "saturate(.92)",
+                    transform: `translateY(${(1 - clamp(portP * 1.4 - i * 0.05)) * 8}px)`,
+                  }} />
+                ))}
+              </div>
+              <div style={{ fontSize: 14, color: "rgba(26,23,20,.55)", marginTop: 12, letterSpacing: 1 }}>
+                <b style={{ fontFamily: NUMF, color: INK }}>853</b> 位有头像 · 每份档案附真实照片
+              </div>
+            </div>
+            <div style={{ opacity: clamp((time - c2 - 0.5) / 0.8), transform: `translateY(${(1 - clamp((time - c2 - 0.5) / 0.8)) * 12}px)` }}>
+              <CropImg src="../素材/截图/03-lineage-shizhengliang.png" crop={[1255, 430, 375, 480]} width={292}
+                style={{ border: "1px solid rgba(26,23,20,.4)", borderRadius: 4, boxShadow: "0 14px 40px rgba(15,12,8,.25)" }} />
+              <div style={{ fontSize: 12.5, color: "rgba(26,23,20,.5)", marginTop: 8, letterSpacing: 1 }}>
+                真实公开档案 · 史正良 · 川菜第三代
+              </div>
+            </div>
+          </div>
+        </div>
+      </SheetFrame>
+    </div>
+  );
+}
+/* ───────── s06：左 谱链放大 + 右 来源卡（光标弧线 + 点击涟漪 + 下划线） ───────── */
+function SourceScene() {
+  const { time, cur } = useSceneInfo();
+  if (cur.id !== "s06-source") return null;
+  const intro = expoOut(clamp((time - cur.start - 0.2) / 0.8));
+  const exit = clamp((time - (cur.end - 0.55)) / 0.55);
+  const ch1 = B("s06", "card") + 0.15, go = B("s06", "go");
+  const draw = clamp((time - (ch1 + 0.55)) / 0.7);
+  const fly = clamp((time - go) / 0.55);
+  const ripple = clamp((time - go - 0.55) / 0.6);
+  const mx = lerp(700, 372, expoOut(fly)) + Math.sin(expoOut(fly) * Math.PI) * -50;
+  const my = lerp(300, 96, expoOut(fly)) + Math.sin(expoOut(fly) * Math.PI) * 40;
+  return (
+    <>
+      {/* 左：谱链放大（上一镜主角让位，置于上方避开卡片） */}
+      <div style={{ position: "absolute", left: "19%", top: "31%", transform: `translate(-50%,-50%) translateX(${-expoOut(exit) * 8}%)`, opacity: 0.6 * intro * (1 - exit), zIndex: 15, fontFamily: SERIF }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ padding: "14px 26px", border: "1.5px solid rgba(26,23,20,.5)", borderRadius: 4, fontSize: 26, background: "rgba(26,23,20,.04)" }}>魏兴国</span>
+          <span style={{ color: "rgba(26,23,20,.5)", fontSize: 26 }}>→</span>
+          <span style={{ padding: "14px 26px", border: "1.5px solid rgba(176,58,46,.7)", borderRadius: 4, fontSize: 26, color: VERM, fontWeight: 600, background: "rgba(176,58,46,.07)" }}>史正良</span>
+        </div>
+        <div style={{ marginTop: 16, fontSize: 15, color: "rgba(26,23,20,.5)", letterSpacing: 2 }}>每条师承 · 附公开来源</div>
+      </div>
+      {/* 右：来源卡 */}
+      <div style={{ position: "absolute", left: "56%", top: "47%", transform: `translate(-50%,-50%) translateY(${(1 - intro) * 30}px)`, opacity: intro * (1 - exit), zIndex: 24, fontFamily: SERIF }}>
+        <div style={{ background: PAPER, border: "1.5px solid rgba(26,23,20,.8)", borderRadius: 6, boxShadow: "0 22px 60px rgba(15,12,8,.3)", padding: "28px 40px", minWidth: 560, position: "relative" }}>
+          <div style={{ fontSize: 13.5, color: "rgba(26,23,20,.5)", letterSpacing: 3, marginBottom: 14 }}>师承出处 · SOURCE</div>
+          <div style={{ fontSize: 27, fontWeight: 600, color: INK, position: "relative", display: "inline-block" }}>
+            查看来源 · 百度百科 <span style={{ color: VERM }}>↗</span>
+            <span style={{ position: "absolute", left: 0, bottom: -7, height: 2.5, width: `${expoOut(draw) * 100}%`, background: VERM }} />
+          </div>
+          <div style={{ fontSize: 15.5, color: "rgba(26,23,20,.55)", marginTop: 14, fontFamily: "'Fraunces',Consolas,monospace" }}>
+            baike.baidu.com/item/蓝光鉴
+          </div>
+          <div style={{ fontSize: 15, color: "rgba(26,23,20,.5)", marginTop: 12 }}>
+            评委、雇主、学徒，都能亲自验证。
+          </div>
+          <svg width="640" height="330" viewBox="0 0 640 330" style={{ position: "absolute", left: 0, top: 0, overflow: "visible", pointerEvents: "none" }}>
+            <g transform={`translate(${Math.round(mx)},${Math.round(my)})`}>
+              <path d="M0 0 L11 27 L4.5 24.5 L0 33 Z" fill={INK} stroke={PAPER} strokeWidth="1.4" />
+            </g>
+            {ripple > 0 && ripple < 1 && [0, 0.12].map((d, i) => {
+              const r = clamp((time - go - 0.55 - d) / 0.55);
+              return <circle key={i} cx={372} cy={96} r={13 + r * 36 - (i ? 7 : 0)} fill="none" stroke={VERM} strokeWidth={2 - i * 0.8} opacity={(1 - r) * 0.9} />;
+            })}
+          </svg>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ───────── s07：右 匹配拆解（五维错峰生长 + 75 落位） ───────── */
+function MatchSheet() {
+  const { time, cur } = useSceneInfo();
+  if (cur.id !== "s07-jobs") return null;
+  const intro = expoOut(clamp((time - cur.start - 0.25) / 0.9));
+  const exit = clamp((time - (cur.end - 0.55)) / 0.55);
+  const roll = B("s07", "roll"), note = B("s07", "note");
+  // 分数 = 已生长维度的实时和（40+0+20+15=75），「每一分都能拆开看」的字面化
+  const barDefs = [
+    { cn: "菜系", en: "CUISINE", v: 40, max: 40, t: B("s07", "bar1") },
+    { cn: "师门", en: "LINEAGE", v: 0, max: 25, t: B("s07", "bar2") },
+    { cn: "地域", en: "CITY", v: 20, max: 20, t: B("s07", "bar3") },
+    { cn: "薪资", en: "SALARY", v: 15, max: 15, t: B("s07", "bar4") },
+  ];
+  const score = Math.round(barDefs.reduce((s, b) => s + b.v * expoOut(clamp((time - b.t) / 0.6)), 0));
+  const W = 700, H = 470;
+  return (
+    <div style={{ position: "absolute", left: "54%", top: "50%", transform: `translate(-50%,-50%) translateX(${expoOut(exit) * 8}%)`, opacity: intro * (1 - exit), zIndex: 22, fontFamily: SERIF }}>
+      <SheetFrame w={W} h={H} label="匹配度拆解" tag="与 匿名厨师">
+        <div style={{ position: "absolute", left: 36, right: 34, top: 56 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+            <span style={{ fontFamily: NUMF, fontSize: 64, fontWeight: 900, color: VERM, fontVariantNumeric: "tabular-nums" }}>{score}</span>
+            <span style={{ fontSize: 24, color: "rgba(26,23,20,.6)", fontFamily: NUMF }}>/100</span>
+            <span style={{ fontSize: 14.5, color: "rgba(26,23,20,.5)", marginLeft: "auto", letterSpacing: 1 }}>五维 · 全程可解释</span>
+          </div>
+          {barDefs.map((b, i) => {
+            const p = expoOut(clamp((time - b.t) / 0.6));
+            const ratio = b.v / b.max;
+            return (
+              <div key={b.cn} style={{ marginTop: 17 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 16, color: INK }}>
+                  <span>{b.cn} <span style={{ fontSize: 11, color: "rgba(26,23,20,.4)", letterSpacing: 2, marginLeft: 6 }}>{b.en}</span></span>
+                  <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                    <span style={{ color: b.v === 0 ? VERM : INK }}>{Math.round(b.v * p)}</span>
+                    <span style={{ color: "rgba(26,23,20,.45)" }}> / {b.max}</span>
+                  </span>
+                </div>
+                <div style={{ height: 8, background: "rgba(26,23,20,.09)", borderRadius: 2, marginTop: 7 }}>
+                  <div style={{ height: "100%", width: `${ratio * 100 * p}%`, background: ratio >= 0.9 ? VERM : (b.v > 0 ? GOLD : "rgba(176,58,46,.35)"), borderRadius: 2 }} />
+                </div>
+              </div>
+            );
+          })}
+          {time >= note + 0.15 && (
+            <div style={{
+              marginTop: 20, padding: "12px 18px", borderLeft: "3px solid " + VERM,
+              background: "rgba(26,23,20,.04)", fontSize: 16, color: INK,
+              opacity: expoOut(clamp((time - note - 0.15) / 0.6)),
+            }}>
+              核心契合点：<b>菜系</b> — 同为川菜
+            </div>
+          )}
+        </div>
+      </SheetFrame>
+    </div>
+  );
+}
+
+/* ───────── s08：左 菜系成圈 + 右 社区帖墙（真实帖子照录） ───────── */
+const POSTS = [
+  { a: "陈师傅", r: "川菜厨师长 · 成都", tag: "川菜", t: "川菜师傅带徒，最看重哪一点?", d: "带了六个徒弟，最后能上灶的只有两个。不是刀工问题，是愿不愿意在下班后自己练。", like: 34, cmt: 1 },
+  { a: "扬州老张", r: "淮扬菜主厨 · 扬州", tag: "淮扬菜", t: "淮扬菜的刀工，练多久才算入门", d: "文思豆腐切成细丝不断，我练了两年。师傅说：先切萝卜，切一百斤再上豆腐。", like: 41, cmt: 8 },
+  { a: "罗小川", r: "川菜学习者 · 成都", tag: "川菜", t: "蓝光鉴一脉的「开水白菜」，到底难在哪", d: "很多人以为是汤的问题，其实是火的问题。扫汤要用鸡茸肉茸，分三次下。", like: 58, cmt: 8 },
+];
+const RINGS = [
+  { n: "川菜", dx: -70, dy: -50, r: 82, tone: VERM },
+  { n: "淮扬菜", dx: 78, dy: -18, r: 66, tone: INK },
+  { n: "粤菜", dx: -34, dy: 66, r: 54, tone: INK },
+  { n: "鲁菜", dx: 62, dy: 78, r: 46, tone: GOLD },
+];
+function CommunityScene() {
+  const { time, cur } = useSceneInfo();
+  if (cur.id !== "s08-community") return null;
+  const intro = expoOut(clamp((time - cur.start - 0.2) / 0.8));
+  const exit = clamp((time - (cur.end - 0.55)) / 0.55);
+  const circ = B("s08", "circles");
+  const posts = [B("s08", "post1"), B("s08", "post2"), B("s08", "post3")];
+  return (
+    <>
+      {/* 左：按菜系成圈 */}
+      <div style={{ position: "absolute", left: "18%", top: "41.5%", transform: `translate(-50%,-50%) translateX(${-expoOut(exit) * 8}%)`, opacity: intro * (1 - exit), zIndex: 18 }}>
+        <div style={{ position: "relative", width: 420, height: 320 }}>
+          {RINGS.map((g, i) => {
+            const p = expoOut(clamp((time - circ - 0.3 - i * 0.28) / 0.6));
+            if (p <= 0) return null;
+            return (
+              <div key={g.n} style={{
+                position: "absolute", left: 210 + g.dx - g.r, top: 160 + g.dy - g.r,
+                width: g.r * 2, height: g.r * 2, borderRadius: "50%",
+                border: `1.5px solid ${g.tone === INK ? "rgba(26,23,20,.5)" : g.tone}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: g.tone === VERM ? "rgba(176,58,46,.05)" : "rgba(26,23,20,.02)",
+                opacity: p * 0.95, transform: `scale(${0.75 + p * 0.25})`, fontFamily: SERIF,
+              }}>
+                <span style={{ fontSize: Math.max(15, g.r * 0.24), color: g.tone === INK ? "rgba(26,23,20,.7)" : g.tone, fontWeight: g.tone === VERM ? 600 : 400, letterSpacing: 2 }}>{g.n}</span>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ textAlign: "center", fontSize: 14.5, color: "rgba(26,23,20,.55)", marginTop: 6, fontFamily: SERIF, letterSpacing: 2, opacity: clamp((time - circ - 1.5) / 0.6) }}>
+          帖子存在你自己的浏览器里
+        </div>
+      </div>
+      {/* 右：帖子墙 */}
+      <div style={{ position: "absolute", left: "54%", top: "49%", transform: `translate(-50%,-50%) translateX(${expoOut(exit) * 8}%)`, opacity: intro * (1 - exit), width: 800, zIndex: 22 }}>
+        {POSTS.map((p, i) => {
+          const t = expoOut(clamp((time - posts[i] - 0.1) / 0.65));
+          if (t <= 0) return null;
+          return (
+            <div key={p.a} style={{
+              background: "#FBF7EC", border: "1px solid rgba(26,23,20,.45)", borderRadius: 5,
+              padding: "16px 24px", marginBottom: 13, fontFamily: SERIF,
+              opacity: t, transform: `translateY(${(1 - t) * 24}px)`, boxShadow: "0 12px 34px rgba(15,12,8,.18)",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14.5, color: "rgba(26,23,20,.6)" }}>
+                <span style={{ width: 30, height: 30, border: "1px solid rgba(26,23,20,.5)", borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 600, color: INK }}>{p.a[0]}</span>
+                <b style={{ color: INK, fontWeight: 600 }}>{p.a}</b>
+                <span style={{ fontSize: 13 }}>{p.r}</span>
+                <span style={{ marginLeft: "auto", fontSize: 12.5, color: VERM, border: "1px solid rgba(176,58,46,.45)", borderRadius: 3, padding: "1px 8px" }}>{p.tag}</span>
+              </div>
+              <div style={{ fontSize: 18.5, fontWeight: 600, color: INK, margin: "9px 0 6px" }}>{p.t}</div>
+              <div style={{ fontSize: 13.5, color: "rgba(26,23,20,.62)", lineHeight: 1.7 }}>{p.d}</div>
+              <div style={{ fontSize: 12.5, color: "rgba(26,23,20,.45)", marginTop: 8 }}>♥ {p.like} · 评论 {p.cmt}</div>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+/* ───────── s09：同构分叉（木匠 / 绣娘 / 理发师） ───────── */
+function CraftShadows() {
+  const { time, cur } = useSceneInfo();
+  if (cur.id !== "s09-vision") return null;
+  const v1 = B("s09", "v1"), v2 = B("s09", "v2"), v3 = B("s09", "v3"), tag = B("s09", "tagline");
+  const items = [
+    { n: "木匠", x: 66, y: 30, t: v1 },
+    { n: "绣娘", x: 79, y: 52, t: v2 },
+    { n: "理发师", x: 66, y: 74, t: v3 },
+  ];
+  const exit = clamp((time - (cur.end - 0.5)) / 0.5);
+  const draw = i => clamp((time - items[i].t) / 0.8);
+  return (
+    <div style={{ position: "absolute", inset: 0, opacity: 1 - exit, zIndex: 20 }}>
+      {/* 虚线连线（自卡片分叉） */}
+      <svg width="1920" height="1080" viewBox="0 0 1920 1080" style={{ position: "absolute", inset: 0 }}>
+        {[0, 1, 2].map(i => {
+          const e = expoOut(draw(i));
+          const x0 = 880, y0 = 560;
+          const x1 = [1265, 1517, 1265][i], y1 = [324, 562, 799][i];
+          const xm = lerp(x0, x1, e), ym = lerp(y0, y1, e);
+          return <line key={i} x1={x0} y1={y0} x2={xm} y2={ym} stroke="rgba(26,23,20,.4)" strokeWidth="1.5" strokeDasharray="5 7" />;
+        })}
+      </svg>
+      {items.map((g, i) => {
+        const s = expoOut(clamp((time - g.t) / 0.8));
+        if (s <= 0) return null;
+        return (
+          <div key={g.n} style={{
+            position: "absolute", left: `${g.x}%`, top: `${g.y}%`, transform: `translate(-50%,-50%) scale(${0.72 + s * 0.28})`,
+            opacity: s * 0.92, width: 268, zIndex: 21,
+          }}>
+            <div style={{
+              background: "rgba(251,247,236,.94)", border: "1.5px dashed rgba(26,23,20,.55)", borderRadius: 6,
+              padding: "24px 26px", fontFamily: SERIF, textAlign: "center", boxShadow: "0 14px 40px rgba(15,12,8,.2)",
+            }}>
+              <div style={{ fontSize: 30, fontWeight: 900, color: "rgba(26,23,20,.8)" }}>{g.n}</div>
+              <div style={{ fontSize: 13, color: "rgba(26,23,20,.5)", marginTop: 8, letterSpacing: 2 }}>师承档案 · 口述简历 · 职业匹配</div>
+            </div>
+          </div>
+        );
+      })}
+      {time >= tag + 0.15 && (
+        <div style={{
+          position: "absolute", left: "50%", bottom: "13.5%", transform: "translateX(-50%)",
+          fontFamily: SERIF, fontSize: 27, fontWeight: 600, color: INK, letterSpacing: 5, whiteSpace: "nowrap",
+          opacity: expoOut(clamp((time - tag - 0.15) / 0.7)), zIndex: 24,
+        }}>
+          每一种「手艺型」职业，都能这样被看见<span style={{ color: VERM }}>。</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ───────── s10：因果合流（口说，开始有凭） ───────── */
+function MergeFinale() {
+  const { time, cur, st } = useSceneInfo();
+  if (cur.id !== "s10-merge") return null;
+  const s1 = B("s10", "s1"), s2 = B("s10", "s2"), s3 = B("s10", "s3"), punch = B("s10", "punch");
+  const n1 = Math.round(1238 * expoOut(clamp((time - s1) / 0.9)));
+  const n2 = Math.round(853 * expoOut(clamp((time - s2) / 0.9)));
+  const n3 = Math.round(262 * expoOut(clamp((time - s3) / 0.9)));
+  const pp = expoOut(clamp((time - punch - 0.25) / 0.6));
+  return (
+    <>
+      {/* 数据行（档案合流后落在卡下方） */}
+      <div style={{
+        position: "absolute", left: "50%", top: "63.5%", transform: "translateX(-50%)",
+        display: "flex", alignItems: "baseline", gap: 34, fontFamily: SERIF, zIndex: 26, whiteSpace: "nowrap",
+      }}>
+        {[[n1, "位厨师", VERM], [n2, "位有头像", INK], [n3, "条师承可溯", INK]].map(([n, u, c], i) => (
+          <span key={i} style={{ display: "inline-flex", alignItems: "baseline", gap: 8 }}>
+            {i > 0 && <span style={{ width: 1, height: 26, background: "rgba(26,23,20,.2)", alignSelf: "center", marginRight: 26 }} />}
+            <span style={{ fontFamily: NUMF, fontSize: 44, fontWeight: 900, color: c, fontVariantNumeric: "tabular-nums" }}>{n.toLocaleString()}</span>
+            <span style={{ fontSize: 16, color: "rgba(26,23,20,.6)" }}>{u}</span>
+          </span>
+        ))}
+      </div>
+      {/* 收束语 */}
+      {pp > 0 && (
+        <div style={{ position: "absolute", left: 0, right: 0, top: "79%", textAlign: "center", fontFamily: SERIF, zIndex: 30, whiteSpace: "nowrap" }}>
+          <span style={{ fontSize: 58, fontWeight: 400, color: "rgba(26,23,20,.5)", letterSpacing: 6, opacity: pp }}>口说，</span>
+          <span style={{ fontSize: 58, fontWeight: 900, color: VERM, letterSpacing: 6, opacity: pp, display: "inline-block", transform: `scale(${0.94 + pp * 0.06})` }}>开始有凭。</span>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ───────── s11：字标 + 产品标语（纯产品收束，末帧 hold） ───────── */
+function EndCard() {
+  const { time, cur } = useSceneInfo();
+  if (cur.id !== "s11-end") return null;
+  const mark = B("s11", "mark");
+  const tag = B("s11", "tag");
+  const p1 = expoOut(clamp((time - mark + 0.1) / 0.8));
+  const p2 = expoOut(clamp((time - tag + 0.1) / 0.8));
+  const p3 = expoOut(clamp((time - tag - 0.4) / 0.8));
+  return (
+    <div style={{ position: "absolute", left: "50%", top: "47%", transform: "translate(-50%,-50%)", textAlign: "center", fontFamily: SERIF, zIndex: 30 }}>
+      <div style={{ fontSize: 16, letterSpacing: 9, color: "rgba(26,23,20,.55)", opacity: expoOut(clamp((time - mark + 0.35) / 0.7)) }}>
+        以师承为信用的厨师职业平台
+      </div>
+      <div style={{ fontSize: 126, fontWeight: 900, color: INK, letterSpacing: 14, lineHeight: 1.3, marginTop: 10, opacity: p1, transform: `scale(${0.965 + p1 * 0.035})` }}>
+        星厨<span style={{ color: VERM }}>传承</span>
+      </div>
+      <div style={{
+        fontSize: 30, fontWeight: 600, color: INK, marginTop: 22, letterSpacing: 7, opacity: p2,
+        transform: `translateY(${(1 - p2) * 12}px)`,
+      }}>
+        让手艺有出处，让师傅有出路。
+      </div>
+      <div style={{ width: 64, height: 2.5, background: GOLD, margin: "22px auto 0", opacity: p3 }} />
+      <div style={{ fontSize: 14.5, color: "rgba(26,23,20,.5)", marginTop: 16, letterSpacing: 4, opacity: p3 }}>
+        数字师承谱 · AI 求职助手 · 招聘匹配 · 社区
+      </div>
+    </div>
+  );
+}
+
+/* ───────── 调试探针（仅 ?rec=1&probe=1 的 QA 会话显示；正式渲染只传 rec=1，不带水印/探针） ───────── */
+function TimeProbe() {
+  const { time, cur } = useSceneInfo();
+  if (!window.__recording || location.search.indexOf("probe=1") === -1) return null;
+  return (
+    <div style={{ position: "absolute", right: 14, top: 12, fontFamily: "Consolas,monospace", fontSize: 15, color: "rgba(26,23,20,.6)", background: "rgba(245,240,230,.75)", padding: "3px 10px", borderRadius: 3, zIndex: 90 }}>
+      t={time.toFixed(2)}s · {cur.id}
+    </div>
+  );
+}
+
+/* ───────── 摄像机 ───────── */
+function CameraRig({ children }) {
+  const { cur, prev, st, settle } = useSceneInfo();
+  const c = CAM_KEYS[cur.id], p = CAM_KEYS[prev.id] || c;
+  const zNow = c.z0 * (1 + c.rate * Math.max(0, st));
+  const z = lerp(camEnd(p), zNow, settle);
+  const oxNow = lerp(c.ox, c.ox2, clamp(st / cur.duration));
+  const oyNow = lerp(c.oy, c.oy2, clamp(st / cur.duration));
+  const ox = lerp(p.ox2, oxNow, settle), oy = lerp(p.oy2, oyNow, settle);
+  return (
+    <div style={{ position: "absolute", inset: 0, transform: `scale(${z})`, transformOrigin: `${ox}% ${oy}%`, willChange: "transform" }}>
+      {children}
+    </div>
+  );
+}
+
+/* ───────── 主装配 ───────── */
+const App = () => {
+  if (!window.__TL) {
+    return (
+      <div style={{ width: 1920, height: 1080, background: PAPER, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: SERIF, fontSize: 26, color: INK }}>
+        _narration/timeline_inline.js 未生成——请先运行 python _narration/scripts/build_timeline.py
+      </div>
+    );
+  }
+  return (
+    <NarrationStage timeline={TL_RAW} audioSrc="_narration/voiceover.mp3" width={1920} height={1080} background={PAPER} controls={true}>
+      <div style={{ position: "absolute", inset: 0, background: PAPER }} />
+      <CameraRig>
+        <FlowLine />
+        <ColumnHeads />
+        <TalkDoc />
+        <ResumeDoc />
+        <ArchiveCard />
+        <FlowCross />
+        <BigTitle />
+        <SloganBar />
+        <LineageSheet />
+        <SourceScene />
+        <MatchSheet />
+        <CommunityScene />
+        <CraftShadows />
+        <MergeFinale />
+        <EndCard />
+      </CameraRig>
+      <Atmosphere />
+      <Subtitles bottom={64} fontSize={30} color="#1a1a1a" haloColor="rgba(245,240,230,0.92)" />
+      <TimeProbe />
+    </NarrationStage>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

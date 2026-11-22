@@ -42,7 +42,7 @@ BEAT_PHRASES = {
     "s05-lineage":   [("c1", "一千二百三十八"), ("c2", "二百六十二条"), ("chain1", "史正良"), ("chain2", "门下十八人")],
     "s06-source":    [("card", "每条师承"), ("go", "评委查得到")],
     "s07-jobs":      [("bar1", "菜系"), ("bar2", "师门"), ("bar3", "地域"), ("bar4", "薪资"), ("roll", "七十五分"), ("note", "拆开看")],
-    "s08-community": [("circles", "按菜系成圈"), ("post1", "师傅招徒"), ("post2", "学徒拜师"), ("post3", "同行切磋")],
+    "s08-community": [("circles", "按菜系成圈"), ("post1", "招徒"), ("post2", "拜师"), ("post3", "切磋")],
     "s09-vision":    [("v1", "木匠"), ("v2", "绣娘"), ("v3", "理发师"), ("tagline", "被看见")],
     "s10-merge":     [("s1", "一千二百三十八"), ("s2", "八百五十三"), ("s3", "二百六十二条"), ("punch", "口说")],
     "s11-end":       [("mark", "星厨传承"), ("tag", "让手艺有出处")],
@@ -55,7 +55,10 @@ def find_beat(scene, phrase):
     idx = stripped.find(ps)
     if idx < 0:
         raise RuntimeError(f"beat phrase 「{phrase}」 not found in {scene['id']}")
-    return word_time_at(scene, idx)
+    wt = word_time_at(scene, idx)
+    if wt is None:  # 无词级时间戳（缓存段）→ 比例降级
+        wt = idx / (len(stripped) or 1) * scene["duration"]
+    return wt
 
 # 1) 逐段 mp3 → wav(24k mono s16)，wave 模块拼接
 import wave
