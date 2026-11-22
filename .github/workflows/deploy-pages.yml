@@ -1,5 +1,5 @@
 # 星厨传承 Web 版 → GitHub Pages 部署
-# 线上地址：https://franciscolaurent.github.io/star-chef/
+# 线上地址：https://franciscolaurent.github.io/star-chef-trae/
 name: Deploy to GitHub Pages
 
 on:
