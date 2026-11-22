@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>方向B · 从口述到档案</title>
+<style>
+  :root{
+    --board:#171512; --board2:#211d18; --paper:#F5F0E6; --ink:#1A1714;
+    --vermillion:#B03A2E; --moss:#5B6B4F; --gold:#C9A24A; --rule:#3a352c;
+    --tx:#E8E2D4; --tx-dim:#9a927f; --skeleton:#d8d2c2;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{width:1920px;height:1080px;background:var(--board);color:var(--tx);
+    font-family:"Noto Serif SC","Songti SC","SimSun",serif;overflow:hidden;position:relative}
+  .rail{position:absolute;left:0;top:0;bottom:0;width:430px;background:var(--board2);
+    border-right:1px solid var(--rule);padding:44px 38px;display:flex;flex-direction:column}
+  .num{font-family:Georgia,serif;font-size:20px;letter-spacing:.35em;color:var(--vermillion)}
+  h1{font-size:44px;font-weight:900;line-height:1.28;margin:14px 0 18px}
+  h1 em{font-style:normal;color:var(--vermillion)}
+  .pos{font-size:17px;line-height:1.75}
+  .ref{margin-top:22px;font-size:14px;color:var(--tx-dim);line-height:1.7}
+  .ref b{color:var(--tx);font-weight:600}
+  .motion{margin-top:auto;border-top:1px solid var(--rule);padding-top:20px}
+  .motion h2{font-size:13px;letter-spacing:.3em;color:var(--gold);margin-bottom:12px}
+  .motion li{list-style:none;font-size:14.5px;line-height:1.9;color:var(--tx-dim);padding-left:16px;position:relative}
+  .motion li::before{content:"";position:absolute;left:0;top:.85em;width:6px;height:1px;background:var(--vermillion)}
+  .motion li b{color:var(--tx);font-weight:600}
+  .form{margin-top:16px;font-size:13.5px;line-height:1.7;color:var(--moss)}
+  .form b{color:#8aa27a;font-weight:700}
+  .stage{position:absolute;left:430px;right:0;top:0;bottom:150px;display:flex;align-items:center;justify-content:center;gap:56px;padding:0 60px}
+  .kf{position:relative;background:#0e0c0a;border:1px solid var(--rule);flex:1;height:640px;overflow:hidden}
+  .kf .tag{position:absolute;left:0;top:0;z-index:5;background:var(--board);color:var(--gold);
+    font-size:12px;letter-spacing:.25em;padding:8px 16px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+  /* 关键帧1：因果连续（左口述打字中，右档案显影中——同屏不剪断） */
+  .kf1 .crop{position:absolute;width:172%;left:-46%;top:-6%;filter:saturate(.96)}
+  .kf1::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(90deg, rgba(10,8,6,.28) 0%, transparent 30%, transparent 66%, rgba(10,8,6,.4) 100%)}
+  .caret{position:absolute;z-index:6;left:24.5%;top:63.5%;width:2.5px;height:26px;background:var(--vermillion);
+    box-shadow:0 0 10px rgba(176,58,46,.7)}
+  .ghost{position:absolute;z-index:6;left:36%;top:44%;font-size:13px;letter-spacing:.18em;color:rgba(245,240,230,.85);
+    background:rgba(23,21,18,.82);padding:7px 14px;border:1px solid rgba(201,162,74,.5)}
+  /* 关键帧2：拆解条生长（真实截图裁切） */
+  .kf2 .crop{position:absolute;width:200%;right:0;top:-2%;filter:saturate(.96)}
+  .kf2::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,8,6,.72) 0%,rgba(10,8,6,.25) 46%,transparent 60%)}
+  .score{position:absolute;z-index:6;left:7%;top:10%;color:var(--paper);font-size:44px;font-weight:900;font-family:Georgia,"Noto Serif SC",serif;
+    text-shadow:0 2px 18px rgba(0,0,0,.55)}
+  .score i{font-style:normal;color:var(--vermillion)}
+  .score small{font-size:13px;color:var(--tx-dim);letter-spacing:.2em;display:block;margin-top:6px;font-weight:400}
+  .palette{position:absolute;left:430px;right:0;bottom:0;height:150px;border-top:1px solid var(--rule);
+    display:flex;align-items:center;padding:0 60px;gap:44px}
+  .sw{width:74px;height:44px;border:1px solid var(--rule);position:relative}
+  .sw span{position:absolute;left:0;top:50px;font-size:11.5px;color:var(--tx-dim);letter-spacing:.12em;white-space:nowrap}
+  .plabel{font-size:12px;letter-spacing:.3em;color:var(--gold);margin-right:6px}
+</style>
+</head>
+<body>
+  <aside class="rail">
+    <div class="num">方向 B · DIR 2</div>
+    <h1>从口述<em>到档案</em>。</h1>
+    <p class="pos">叙事引擎是"过程"本身：大白话逐字打出 → AI 提取 → 档案逐块显影 → 匹配拆解生长。因果在同屏连续发生、绝不剪断——「会说话，就会写简历」是一段时间上的戏。</p>
+    <p class="ref">参照语法：<b>Stripe 产品演示</b>（输入→输出因果连续）<br>实测参数源：shotcraft · type-and-filter / document-typewriter-reveal</p>
+    <ul class="motion">
+      <h2>运动语言</h2>
+      <li><b>typing 3f/字符</b>，人手节奏，光标打字时常亮、打完转闪烁</li>
+      <li>字段逐块显影：块数×节拍先对预算，「永远只有一个笔尖」</li>
+      <li>拆解条 5 段错峰生长，每个分数都能拆开看</li>
+      <li>打完到响应留 11f 呼吸；批量收尾静止 0.5s</li>
+    </ul>
+    <p class="form"><b>form 来自内容：</b>老师傅说一段大白话、AI 严格按口述整理——"整理"这个动作就是画面本身。</p>
+  </aside>
+  <main class="stage">
+    <figure class="kf kf1">
+      <span class="tag">关键帧 ① · 口述打字中→档案显影中（同屏因果连续）</span>
+      <img class="crop" src="../素材/截图/09-assistant-demo-result.png" alt="">
+      <div class="caret"></div>
+      <div class="ghost">提取：55 岁 · 淮扬菜 · 扬州 ✓</div>
+    </figure>
+    <figure class="kf kf2">
+      <span class="tag">关键帧 ② · 匹配拆解条生长（真实截图）</span>
+      <div class="score"><i>75</i>/100<small>五维 · 全程可解释</small></div>
+      <img class="crop" src="../素材/截图/06-jobs-breakdown.png" alt="">
+    </figure>
+  </main>
+  <footer class="palette">
+    <span class="plabel">色板 · 全部取自产品自身 tokens</span>
+    <div class="sw" style="background:#F5F0E6"><span>纸 F5F0E6</span></div>
+    <div class="sw" style="background:#1A1714"><span>墨 1A1714</span></div>
+    <div class="sw" style="background:#B03A2E"><span>朱 B03A2E</span></div>
+    <div class="sw" style="background:#5B6B4F"><span>苔 5B6B4F</span></div>
+    <div class="sw" style="background:#C9A24A"><span>金 C9A24A</span></div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>方向A · 一张卡立传</title>
+<style>
+  :root{
+    --board:#171512; --board2:#211d18; --paper:#F5F0E6; --ink:#1A1714;
+    --vermillion:#B03A2E; --moss:#5B6B4F; --gold:#C9A24A; --rule:#3a352c;
+    --tx:#E8E2D4; --tx-dim:#9a927f;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{width:1920px;height:1080px;background:var(--board);color:var(--tx);
+    font-family:"Noto Serif SC","Songti SC","SimSun",serif;overflow:hidden;position:relative}
+  .rail{position:absolute;left:0;top:0;bottom:0;width:430px;background:var(--board2);
+    border-right:1px solid var(--rule);padding:44px 38px;display:flex;flex-direction:column}
+  .num{font-family:Georgia,serif;font-size:20px;letter-spacing:.35em;color:var(--vermillion)}
+  h1{font-size:44px;font-weight:900;line-height:1.28;margin:14px 0 18px}
+  h1 em{font-style:normal;color:var(--vermillion)}
+  .pos{font-size:17px;line-height:1.75;color:var(--tx)}
+  .ref{margin-top:22px;font-size:14px;color:var(--tx-dim);line-height:1.7}
+  .ref b{color:var(--tx);font-weight:600}
+  .motion{margin-top:auto;border-top:1px solid var(--rule);padding-top:20px}
+  .motion h2{font-size:13px;letter-spacing:.3em;color:var(--gold);margin-bottom:12px}
+  .motion li{list-style:none;font-size:14.5px;line-height:1.9;color:var(--tx-dim);
+    padding-left:16px;position:relative}
+  .motion li::before{content:"";position:absolute;left:0;top:.85em;width:6px;height:1px;background:var(--vermillion)}
+  .motion li b{color:var(--tx);font-weight:600}
+  .form{margin-top:16px;font-size:13.5px;line-height:1.7;color:var(--moss);font-style:normal}
+  .form b{color:#8aa27a;font-weight:700}
+  .stage{position:absolute;left:430px;right:0;top:0;bottom:150px;display:flex;align-items:center;justify-content:center;gap:56px;padding:0 60px}
+  .kf{position:relative;background:#0e0c0a;border:1px solid var(--rule);flex:1;height:640px;overflow:hidden}
+  .kf .tag{position:absolute;left:0;top:0;z-index:5;background:var(--board);color:var(--gold);
+    font-size:12px;letter-spacing:.25em;padding:8px 16px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+  /* 关键帧1：档案卡 hero 特写（真实截图裁切 + 聚光晕） */
+  .kf1 .crop{position:absolute;width:240%;left:-109%;top:-53%;filter:saturate(.96)}
+  .kf1::after{content:"";position:absolute;inset:0;
+    background:radial-gradient(ellipse 60% 55% at 46% 48%, transparent 42%, rgba(10,8,6,.6) 100%)}
+  .beam{position:absolute;z-index:6;left:8%;top:16%;width:76%;height:9%;
+    border:1.5px solid rgba(201,162,74,.85);border-radius:10px;
+    box-shadow:0 0 24px rgba(201,162,74,.28), inset 0 0 24px rgba(201,162,74,.12)}
+  .beam::after{content:"完整度 75% · 建议补充：从业年限、师承";position:absolute;left:4px;top:-34px;font-size:13px;color:var(--gold);letter-spacing:.18em;white-space:nowrap}
+  /* 关键帧2：师承链背书（真实截图裁切） */
+  .kf2 .crop{position:absolute;width:235%;left:-118%;top:-52%;filter:saturate(.96)}
+  .kf2::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent 62%,rgba(10,8,6,.5) 100%)}
+  .callo{position:absolute;z-index:6;left:10%;bottom:9%;color:var(--paper);font-size:15px;letter-spacing:.14em}
+  .callo i{font-style:normal;color:var(--vermillion)}
+  .palette{position:absolute;left:430px;right:0;bottom:0;height:150px;border-top:1px solid var(--rule);
+    display:flex;align-items:center;padding:0 60px;gap:44px}
+  .sw{width:74px;height:44px;border:1px solid var(--rule);position:relative}
+  .sw span{position:absolute;left:0;top:50px;font-size:11.5px;color:var(--tx-dim);letter-spacing:.12em;white-space:nowrap}
+  .plabel{font-size:12px;letter-spacing:.3em;color:var(--gold);margin-right:6px}
+</style>
+</head>
+<body>
+  <aside class="rail">
+    <div class="num">方向 A · DIR 1</div>
+    <h1>一张卡<em>立传</em>。</h1>
+    <p class="pos">全片只跟一张卡片演戏：周慕白的 AI 求职档案。聚光锁定→推近→悬浮→师承背书→归位。慢、庄重、可信——「老师傅唯一的简历」值得一次博物馆式的注视。</p>
+    <p class="ref">参照语法：<b>Apple 产品影片</b>（单主角慢镜头、全片唯一轮廓光）<br>实测参数源：shotcraft · spotlight-hero-card</p>
+    <ul class="motion">
+      <h2>运动语言</h2>
+      <li><b>hero 状态 morph 贯穿全片</b>：空卡→口述涌入→字段显影→完整度 75%→复制投出→在谱页归位</li>
+      <li>聚光经 4 个中间站锁定卡心；全片唯一光束只给主角</li>
+      <li>师承链段落=卡片的信用背书（链 pills 逐一亮起）</li>
+      <li>每段 hold ≥1.2s，收尾真静止</li>
+    </ul>
+    <p class="form"><b>form 来自内容：</b>档案卡是老师傅唯一能投出去的"简历"——立传即公益叙事本身。</p>
+  </aside>
+  <main class="stage">
+    <figure class="kf kf1">
+      <span class="tag">关键帧 ① · 生成后的档案卡（真实截图 · 聚光推近）</span>
+      <img class="crop" src="../素材/截图/09-assistant-demo-result.png" alt="">
+      <div class="beam"></div>
+    </figure>
+    <figure class="kf kf2">
+      <span class="tag">关键帧 ② · 师承链背书（真实截图 · 链亮起）</span>
+      <img class="crop" src="../素材/截图/03-lineage-shizhengliang.png" alt="">
+      <div class="callo">门下 <i>18</i> 人 · 师承可上溯 · 每条都有出处</div>
+    </figure>
+  </main>
+  <footer class="palette">
+    <span class="plabel">色板 · 全部取自产品自身 tokens</span>
+    <div class="sw" style="background:#F5F0E6"><span>纸 F5F0E6</span></div>
+    <div class="sw" style="background:#1A1714"><span>墨 1A1714</span></div>
+    <div class="sw" style="background:#B03A2E"><span>朱 B03A2E</span></div>
+    <div class="sw" style="background:#5B6B4F"><span>苔 5B6B4F</span></div>
+    <div class="sw" style="background:#C9A24A"><span>金 C9A24A</span></div>
+  </footer>
+</body>
+</html>

@@ -16,3 +16,10 @@ Thumbs.db
 # 环境与密钥（严禁提交任何 Key）
 .env
 .env.*
+
+# 视频制作中间产物（可由 scripts + npm install 重建）
+参赛材料/视频制作/_narration/node_modules/
+参赛材料/视频制作/_narration/fonts/
+参赛材料/视频制作/_narration/_lib/
+参赛材料/视频制作/_narration/voiceover.wav
+参赛材料/视频制作/素材/成片帧/

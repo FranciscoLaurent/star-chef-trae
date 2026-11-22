@@ -1,0 +1,517 @@
+{
+ "title": "星厨传承 · 参赛演示片",
+ "voice": "edge-tts zh-CN-XiaoxiaoNeural",
+ "speed": 1.0,
+ "gap": 0.55,
+ "totalDuration": 108.572,
+ "voiceover": "voiceover.mp3",
+ "scenes": [
+  {
+   "id": "s01-hook",
+   "start": 0.8,
+   "end": 6.512,
+   "duration": 5.712,
+   "audio": "audio/s01-hook.mp3",
+   "text": "在餐饮行业，「你是谁带的」，往往比「你在哪里干过」更重要。",
+   "chunks": [
+    {
+     "text": "在餐饮行业，",
+     "start": 0.0,
+     "end": 1.182,
+     "absoluteStart": 0.8,
+     "absoluteEnd": 1.982
+    },
+    {
+     "text": "「你是谁带的」，",
+     "start": 1.182,
+     "end": 2.758,
+     "absoluteStart": 1.982,
+     "absoluteEnd": 3.558
+    },
+    {
+     "text": "往往比「你在哪里干过」更重要。",
+     "start": 2.758,
+     "end": 5.712,
+     "absoluteStart": 3.558,
+     "absoluteEnd": 6.512
+    }
+   ],
+   "cues": [
+    {
+     "id": "hook",
+     "offset": 2.364,
+     "absoluteTime": 3.164
+    }
+   ]
+  },
+  {
+   "id": "s02-problem",
+   "start": 7.062,
+   "end": 18.414,
+   "duration": 11.352,
+   "audio": "audio/s02-problem.mp3",
+   "text": "上千万中国厨师里，最难换工作的，恰恰是手艺最好的那批老师傅。他们会做三十六道菜，简历却只能写八个字。",
+   "chunks": [
+    {
+     "text": "上千万中国厨师里，",
+     "start": 0.0,
+     "end": 2.043,
+     "absoluteStart": 7.062,
+     "absoluteEnd": 9.105
+    },
+    {
+     "text": "最难换工作的，",
+     "start": 2.043,
+     "end": 3.633,
+     "absoluteStart": 9.105,
+     "absoluteEnd": 10.695
+    },
+    {
+     "text": "恰恰是手艺最好的那批老师傅。",
+     "start": 3.633,
+     "end": 6.811,
+     "absoluteStart": 10.695,
+     "absoluteEnd": 13.873
+    },
+    {
+     "text": "他们会做三十六道菜，",
+     "start": 6.811,
+     "end": 9.082,
+     "absoluteStart": 13.873,
+     "absoluteEnd": 16.144
+    },
+    {
+     "text": "简历却只能写八个字。",
+     "start": 9.082,
+     "end": 11.352,
+     "absoluteStart": 16.144,
+     "absoluteEnd": 18.414
+    }
+   ],
+   "cues": [
+    {
+     "id": "36",
+     "offset": 8.173,
+     "absoluteTime": 15.235
+    }
+   ]
+  },
+  {
+   "id": "s03-product",
+   "start": 18.964,
+   "end": 28.492,
+   "duration": 9.528,
+   "audio": "audio/s03-product.mp3",
+   "text": "星厨传承，把行业最底层的信任——师承——数字化。一张档案，就是一位厨师的手艺与出处。",
+   "chunks": [
+    {
+     "text": "星厨传承，",
+     "start": 0.0,
+     "end": 1.134,
+     "absoluteStart": 18.964,
+     "absoluteEnd": 20.098
+    },
+    {
+     "text": "把行业最底层的信任——",
+     "start": 1.134,
+     "end": 3.63,
+     "absoluteStart": 20.098,
+     "absoluteEnd": 22.594
+    },
+    {
+     "text": "师承——数字化。",
+     "start": 3.63,
+     "end": 5.445,
+     "absoluteStart": 22.594,
+     "absoluteEnd": 24.409
+    },
+    {
+     "text": "一张档案，",
+     "start": 5.445,
+     "end": 6.579,
+     "absoluteStart": 24.409,
+     "absoluteEnd": 25.543
+    },
+    {
+     "text": "就是一位厨师的手艺与出处。",
+     "start": 6.579,
+     "end": 9.528,
+     "absoluteStart": 25.543,
+     "absoluteEnd": 28.492
+    }
+   ],
+   "cues": [
+    {
+     "id": "card",
+     "offset": 6.806,
+     "absoluteTime": 25.77
+    }
+   ]
+  },
+  {
+   "id": "s04-lineage",
+   "start": 29.042,
+   "end": 38.81,
+   "duration": 9.768,
+   "audio": "audio/s04-lineage.mp3",
+   "text": "这是我们真实公开档案里的一条师承链：川菜第三代史正良，门下十八人，每一位徒弟，都有出处。",
+   "chunks": [
+    {
+     "text": "这是我们真实公开档案里的一条师承链：",
+     "start": 0.0,
+     "end": 3.996,
+     "absoluteStart": 29.042,
+     "absoluteEnd": 33.038
+    },
+    {
+     "text": "川菜第三代史正良，",
+     "start": 3.996,
+     "end": 5.994,
+     "absoluteStart": 33.038,
+     "absoluteEnd": 35.036
+    },
+    {
+     "text": "门下十八人，每一位徒弟，",
+     "start": 5.994,
+     "end": 8.658,
+     "absoluteStart": 35.036,
+     "absoluteEnd": 37.7
+    },
+    {
+     "text": "都有出处。",
+     "start": 8.658,
+     "end": 9.768,
+     "absoluteStart": 37.7,
+     "absoluteEnd": 38.81
+    }
+   ],
+   "cues": [
+    {
+     "id": "chain",
+     "offset": 8.658,
+     "absoluteTime": 37.7
+    }
+   ]
+  },
+  {
+   "id": "s05-honest",
+   "start": 39.36,
+   "end": 45.72,
+   "duration": 6.36,
+   "audio": "audio/s05-honest.mp3",
+   "text": "没核实的，我们诚实标注「待补」。宁可谱瘦，不让谱说谎。",
+   "chunks": [
+    {
+     "text": "没核实的，",
+     "start": 0.0,
+     "end": 1.178,
+     "absoluteStart": 39.36,
+     "absoluteEnd": 40.538
+    },
+    {
+     "text": "我们诚实标注「待补」。",
+     "start": 1.178,
+     "end": 3.769,
+     "absoluteStart": 40.538,
+     "absoluteEnd": 43.129
+    },
+    {
+     "text": "宁可谱瘦，不让谱说谎。",
+     "start": 3.769,
+     "end": 6.36,
+     "absoluteStart": 43.129,
+     "absoluteEnd": 45.72
+    }
+   ],
+   "cues": [
+    {
+     "id": "wait",
+     "offset": 5.182,
+     "absoluteTime": 44.542
+    }
+   ]
+  },
+  {
+   "id": "s06-source",
+   "start": 46.27,
+   "end": 53.062,
+   "duration": 6.792,
+   "audio": "audio/s06-source.mp3",
+   "text": "每条师承都附来源链接，评委、雇主、学徒，都能亲自验证。",
+   "chunks": [
+    {
+     "text": "每条师承都附来源链接，",
+     "start": 0.0,
+     "end": 2.767,
+     "absoluteStart": 46.27,
+     "absoluteEnd": 49.037
+    },
+    {
+     "text": "评委、雇主、学徒，",
+     "start": 2.767,
+     "end": 5.031,
+     "absoluteStart": 49.037,
+     "absoluteEnd": 51.301
+    },
+    {
+     "text": "都能亲自验证。",
+     "start": 5.031,
+     "end": 6.792,
+     "absoluteStart": 51.301,
+     "absoluteEnd": 53.062
+    }
+   ],
+   "cues": [
+    {
+     "id": "verify",
+     "offset": 4.276,
+     "absoluteTime": 50.546
+    }
+   ]
+  },
+  {
+   "id": "s07-jobs",
+   "start": 53.612,
+   "end": 65.828,
+   "duration": 12.216,
+   "audio": "audio/s07-jobs.mp3",
+   "text": "招聘匹配基于菜系、师门、师承距离、地域、薪资五个维度打分。每个分数都能拆开看——AI 只解释，不玄学。",
+   "chunks": [
+    {
+     "text": "招聘匹配基于菜系、师门、",
+     "start": 0.0,
+     "end": 2.874,
+     "absoluteStart": 53.612,
+     "absoluteEnd": 56.486
+    },
+    {
+     "text": "师承距离、地域、",
+     "start": 2.874,
+     "end": 4.791,
+     "absoluteStart": 56.486,
+     "absoluteEnd": 58.403
+    },
+    {
+     "text": "薪资五个维度打分。",
+     "start": 4.791,
+     "end": 6.946,
+     "absoluteStart": 58.403,
+     "absoluteEnd": 60.558
+    },
+    {
+     "text": "每个分数都能拆开看——",
+     "start": 6.946,
+     "end": 9.581,
+     "absoluteStart": 60.558,
+     "absoluteEnd": 63.193
+    },
+    {
+     "text": "AI 只解释，不玄学。",
+     "start": 9.581,
+     "end": 12.216,
+     "absoluteStart": 63.193,
+     "absoluteEnd": 65.828
+    }
+   ],
+   "cues": [
+    {
+     "id": "score",
+     "offset": 8.384,
+     "absoluteTime": 61.996
+    }
+   ]
+  },
+  {
+   "id": "s08-ai",
+   "start": 66.378,
+   "end": 79.098,
+   "duration": 12.72,
+   "audio": "audio/s08-ai.mp3",
+   "text": "不会写字的老师傅，说一段大白话。AI 严格按口述整理成规范档案，绝不编造。一键复制，粘到微信，就能投出去。",
+   "chunks": [
+    {
+     "text": "不会写字的老师傅，",
+     "start": 0.0,
+     "end": 2.16,
+     "absoluteStart": 66.378,
+     "absoluteEnd": 68.538
+    },
+    {
+     "text": "说一段大白话。",
+     "start": 2.16,
+     "end": 3.84,
+     "absoluteStart": 68.538,
+     "absoluteEnd": 70.218
+    },
+    {
+     "text": "AI 严格按口述整理成规范档案，",
+     "start": 3.84,
+     "end": 7.68,
+     "absoluteStart": 70.218,
+     "absoluteEnd": 74.058
+    },
+    {
+     "text": "绝不编造。",
+     "start": 7.68,
+     "end": 8.88,
+     "absoluteStart": 74.058,
+     "absoluteEnd": 75.258
+    },
+    {
+     "text": "一键复制，粘到微信，",
+     "start": 8.88,
+     "end": 11.28,
+     "absoluteStart": 75.258,
+     "absoluteEnd": 77.658
+    },
+    {
+     "text": "就能投出去。",
+     "start": 11.28,
+     "end": 12.72,
+     "absoluteStart": 77.658,
+     "absoluteEnd": 79.098
+    }
+   ],
+   "cues": [
+    {
+     "id": "speak",
+     "offset": 5.28,
+     "absoluteTime": 71.658
+    },
+    {
+     "id": "copy",
+     "offset": 10.32,
+     "absoluteTime": 76.698
+    }
+   ]
+  },
+  {
+   "id": "s09-community",
+   "start": 79.648,
+   "end": 88.744,
+   "duration": 9.096,
+   "audio": "audio/s09-community.mp3",
+   "text": "同行切磋、师傅招徒、学徒拜师。社区按菜系成圈，帖子存在你自己浏览器里。",
+   "chunks": [
+    {
+     "text": "同行切磋、师傅招徒、",
+     "start": 0.0,
+     "end": 2.599,
+     "absoluteStart": 79.648,
+     "absoluteEnd": 82.247
+    },
+    {
+     "text": "学徒拜师。",
+     "start": 2.599,
+     "end": 3.898,
+     "absoluteStart": 82.247,
+     "absoluteEnd": 83.546
+    },
+    {
+     "text": "社区按菜系成圈，",
+     "start": 3.898,
+     "end": 5.977,
+     "absoluteStart": 83.546,
+     "absoluteEnd": 85.625
+    },
+    {
+     "text": "帖子存在你自己浏览器里。",
+     "start": 5.977,
+     "end": 9.096,
+     "absoluteStart": 85.625,
+     "absoluteEnd": 88.744
+    }
+   ],
+   "cues": [
+    {
+     "id": "circle",
+     "offset": 5.458,
+     "absoluteTime": 85.106
+    }
+   ]
+  },
+  {
+   "id": "s10-vision",
+   "start": 89.294,
+   "end": 99.398,
+   "duration": 10.104,
+   "audio": "audio/s10-vision.mp3",
+   "text": "让不擅表达的劳动者被看见。这个范式，还能帮助木匠、绣娘、理发师——帮助每一种「手艺型」职业。",
+   "chunks": [
+    {
+     "text": "让不擅表达的劳动者被看见。",
+     "start": 0.0,
+     "end": 2.855,
+     "absoluteStart": 89.294,
+     "absoluteEnd": 92.149
+    },
+    {
+     "text": "这个范式，还能帮助木匠、",
+     "start": 2.855,
+     "end": 5.491,
+     "absoluteStart": 92.149,
+     "absoluteEnd": 94.785
+    },
+    {
+     "text": "绣娘、理发师——",
+     "start": 5.491,
+     "end": 7.249,
+     "absoluteStart": 94.785,
+     "absoluteEnd": 96.543
+    },
+    {
+     "text": "帮助每一种「手艺型」职业。",
+     "start": 7.249,
+     "end": 10.104,
+     "absoluteStart": 96.543,
+     "absoluteEnd": 99.398
+    }
+   ],
+   "cues": [
+    {
+     "id": "paradigm",
+     "offset": 4.173,
+     "absoluteTime": 93.467
+    }
+   ]
+  },
+  {
+   "id": "s11-end",
+   "start": 99.948,
+   "end": 107.172,
+   "duration": 7.224,
+   "audio": "audio/s11-end.mp3",
+   "text": "星厨传承——以师承为信用，用 TRAE 构建。世界很大，放手去造。",
+   "chunks": [
+    {
+     "text": "星厨传承——以师承为信用，",
+     "start": 0.0,
+     "end": 2.846,
+     "absoluteStart": 99.948,
+     "absoluteEnd": 102.794
+    },
+    {
+     "text": "用 TRAE 构建。",
+     "start": 2.846,
+     "end": 5.035,
+     "absoluteStart": 102.794,
+     "absoluteEnd": 104.983
+    },
+    {
+     "text": "世界很大，放手去造。",
+     "start": 5.035,
+     "end": 7.224,
+     "absoluteStart": 104.983,
+     "absoluteEnd": 107.172
+    }
+   ],
+   "cues": [
+    {
+     "id": "brand",
+     "offset": 6.348,
+     "absoluteTime": 106.296
+    }
+   ]
+  }
+ ]
+}

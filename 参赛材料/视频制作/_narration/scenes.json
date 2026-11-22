@@ -1,0 +1,160 @@
+[
+ {
+  "id": "s01-hook",
+  "raw": "在餐饮行业，[[cue:hook]]「你是谁带的」，往往比「你在哪里干过」更重要。",
+  "text": "在餐饮行业，「你是谁带的」，往往比「你在哪里干过」更重要。",
+  "cues": [
+   {
+    "id": "hook",
+    "charOffset": 12
+   }
+  ],
+  "audio": "audio/s01-hook.mp3",
+  "duration": 5.712,
+  "words": []
+ },
+ {
+  "id": "s02-problem",
+  "raw": "上千万中国厨师里，最难换工作的，恰恰是手艺最好的那批老师傅。[[cue:36]]他们会做三十六道菜，简历却只能写八个字。",
+  "text": "上千万中国厨师里，最难换工作的，恰恰是手艺最好的那批老师傅。他们会做三十六道菜，简历却只能写八个字。",
+  "cues": [
+   {
+    "id": "36",
+    "charOffset": 36
+   }
+  ],
+  "audio": "audio/s02-problem.mp3",
+  "duration": 11.352,
+  "words": []
+ },
+ {
+  "id": "s03-product",
+  "raw": "星厨传承，把行业最底层的信任——师承——数字化。[[cue:card]]一张档案，就是一位厨师的手艺与出处。",
+  "text": "星厨传承，把行业最底层的信任——师承——数字化。一张档案，就是一位厨师的手艺与出处。",
+  "cues": [
+   {
+    "id": "card",
+    "charOffset": 30
+   }
+  ],
+  "audio": "audio/s03-product.mp3",
+  "duration": 9.528,
+  "words": []
+ },
+ {
+  "id": "s04-lineage",
+  "raw": "这是我们真实公开档案里的一条师承链：川菜第三代史正良，门下十八人，[[cue:chain]]每一位徒弟，都有出处。",
+  "text": "这是我们真实公开档案里的一条师承链：川菜第三代史正良，门下十八人，每一位徒弟，都有出处。",
+  "cues": [
+   {
+    "id": "chain",
+    "charOffset": 39
+   }
+  ],
+  "audio": "audio/s04-lineage.mp3",
+  "duration": 9.768,
+  "words": []
+ },
+ {
+  "id": "s05-honest",
+  "raw": "没核实的，我们诚实标注「待补」。[[cue:wait]]宁可谱瘦，不让谱说谎。",
+  "text": "没核实的，我们诚实标注「待补」。宁可谱瘦，不让谱说谎。",
+  "cues": [
+   {
+    "id": "wait",
+    "charOffset": 22
+   }
+  ],
+  "audio": "audio/s05-honest.mp3",
+  "duration": 6.36,
+  "words": []
+ },
+ {
+  "id": "s06-source",
+  "raw": "每条师承都附来源链接，[[cue:verify]]评委、雇主、学徒，都能亲自验证。",
+  "text": "每条师承都附来源链接，评委、雇主、学徒，都能亲自验证。",
+  "cues": [
+   {
+    "id": "verify",
+    "charOffset": 17
+   }
+  ],
+  "audio": "audio/s06-source.mp3",
+  "duration": 6.792,
+  "words": []
+ },
+ {
+  "id": "s07-jobs",
+  "raw": "招聘匹配基于菜系、师门、师承距离、地域、薪资五个维度打分。[[cue:score]]每个分数都能拆开看——AI 只解释，不玄学。",
+  "text": "招聘匹配基于菜系、师门、师承距离、地域、薪资五个维度打分。每个分数都能拆开看——AI 只解释，不玄学。",
+  "cues": [
+   {
+    "id": "score",
+    "charOffset": 35
+   }
+  ],
+  "audio": "audio/s07-jobs.mp3",
+  "duration": 12.216,
+  "words": []
+ },
+ {
+  "id": "s08-ai",
+  "raw": "不会写字的老师傅，说一段大白话。[[cue:speak]]AI 严格按口述整理成规范档案，绝不编造。[[cue:copy]]一键复制，粘到微信，就能投出去。",
+  "text": "不会写字的老师傅，说一段大白话。AI 严格按口述整理成规范档案，绝不编造。一键复制，粘到微信，就能投出去。",
+  "cues": [
+   {
+    "id": "speak",
+    "charOffset": 22
+   },
+   {
+    "id": "copy",
+    "charOffset": 43
+   }
+  ],
+  "audio": "audio/s08-ai.mp3",
+  "duration": 12.72,
+  "words": []
+ },
+ {
+  "id": "s09-community",
+  "raw": "同行切磋、师傅招徒、学徒拜师。[[cue:circle]]社区按菜系成圈，帖子存在你自己浏览器里。",
+  "text": "同行切磋、师傅招徒、学徒拜师。社区按菜系成圈，帖子存在你自己浏览器里。",
+  "cues": [
+   {
+    "id": "circle",
+    "charOffset": 21
+   }
+  ],
+  "audio": "audio/s09-community.mp3",
+  "duration": 9.096,
+  "words": []
+ },
+ {
+  "id": "s10-vision",
+  "raw": "让不擅表达的劳动者被看见。[[cue:paradigm]]这个范式，还能帮助木匠、绣娘、理发师——帮助每一种「手艺型」职业。",
+  "text": "让不擅表达的劳动者被看见。这个范式，还能帮助木匠、绣娘、理发师——帮助每一种「手艺型」职业。",
+  "cues": [
+   {
+    "id": "paradigm",
+    "charOffset": 19
+   }
+  ],
+  "audio": "audio/s10-vision.mp3",
+  "duration": 10.104,
+  "words": []
+ },
+ {
+  "id": "s11-end",
+  "raw": "星厨传承——以师承为信用，用 TRAE 构建。[[cue:brand]]世界很大，放手去造。",
+  "text": "星厨传承——以师承为信用，用 TRAE 构建。世界很大，放手去造。",
+  "cues": [
+   {
+    "id": "brand",
+    "charOffset": 29
+   }
+  ],
+  "audio": "audio/s11-end.mp3",
+  "duration": 7.224,
+  "words": []
+ }
+]

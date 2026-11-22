@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>星厨传承 · 参赛演示片（方向A · 一张卡立传）</title>
+<!-- 自托管字体：Noto Serif SC（400/600/900 子集）+ Fraunces 可变字重 -->
+<link rel="stylesheet" href="_narration/fonts/400.css">
+<link rel="stylesheet" href="_narration/fonts/600.css">
+<link rel="stylesheet" href="_narration/fonts/900.css">
+<style>
+  @font-face{
+    font-family:'Fraunces';
+    src:url('_narration/_lib/fraunces-var.woff2') format('woff2-variations');
+    font-weight:100 900; font-style:normal; font-display:block;
+  }
+  html,body{margin:0;padding:0;background:#0e0c0a;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column}
+  #root{overflow:hidden}
+  *{box-sizing:border-box}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+  // 预览调试通道：?rec=1 时以「录制模式」挂载——时间由 window.__seek(t) 驱动，可确定性定位任意帧
+  if (location.search.indexOf("rec=1") !== -1) { window.__recording = true; window.__seekRender = true; }
+</script>
+<script src="_narration/_lib/react.production.min.js"></script>
+<script src="_narration/_lib/react-dom.production.min.js"></script>
+<script src="_narration/_lib/babel.min.js"></script>
+<script type="text/babel">
+/**
+ * narration_stage.jsx · 解说驱动 Stage
+ *
+ * ╔══════════════════════════════════════════════════════════════════╗
+ * ║  🛑 用这套工具之前必读：references/voiceover-pipeline.md         ║
+ * ║                                                                  ║
+ * ║  铁律 #1: 整片是一个连续的运动叙事，不是一组独立场景             ║
+ * ║          You are not making 7 slides. You are directing 1 movie. ║
+ * ║                                                                  ║
+ * ║  铁律 #2: 选定 hero element 跨 scene 持续存在，不要每段一个新布局║
+ * ║                                                                  ║
+ * ║  铁律 #3: scene 之间禁止硬切（opacity 1→0/0→1）                  ║
+ * ║          要 morph，不要 cut                                      ║
+ * ║                                                                  ║
+ * ║  失败模式 #1（本 skill v1 实战踩坑）：                           ║
+ * ║          每个 Scene 各自独立 layout + cue 用 fade-up + scene 切换║
+ * ║          整页 opacity 切换 = 带配音的 PowerPoint = 质感归零       ║
+ * ║                                                                  ║
+ * ║  正确做法：把 hero 直接放在 <NarrationStage> 子级（不进 Scene）  ║
+ * ║          用 useNarration() 在 hero 里读 time/scene/cue 状态      ║
+ * ║          hero 自己根据当前时间决定形态 → 跨 scene 连续运动       ║
+ * ╚══════════════════════════════════════════════════════════════════╝
+ *
+ * 用法（inline 进 HTML 的 <script type="text/babel">）：
+ *   const { NarrationStage, Scene, Cue, useNarration } = NarrationStageLib;
+ *
+ *   const App = () => (
+ *     <NarrationStage timeline={TIMELINE} audioSrc="voiceover.mp3"
+ *                     width={1920} height={1080}>
+ *       <Scene id="intro">
+ *         <h1>什么是 token</h1>
+ *         <Cue id="question">
+ *           {(triggered) => triggered && <p>↑ 这是问题</p>}
+ *         </Cue>
+ *       </Scene>
+ *       <Scene id="token-2">
+ *         <Cue id="split">
+ *           {(triggered, progress) => (
+ *             <div style={{opacity: triggered ? 1 : 0.3}}>...</div>
+ *           )}
+ *         </Cue>
+ *       </Scene>
+ *     </NarrationStage>
+ *   );
+ *
+ * 时间源（自动二选一）：
+ *   - 录视频模式（window.__recording === true）：走 window.__time（外部 driver 推帧）
+ *   - 实播模式：走 <audio> 的 currentTime（用户点播放时和音频严格同步）
+ *
+ * 与 render-video.js 兼容：
+ *   - tick 第一帧设 window.__ready = true
+ *   - 录视频时检测 window.__recording 强制不播 audio、用 window.__time
+ *   - 暴露 window.__totalDuration 给 driver 算总帧数
+ *
+ * 依赖：React 18 + ReactDOM 18 + Babel standalone（同 animations.jsx）
+ */
+
+const NarrationStageLib = (() => {
+  const NarrationContext = React.createContext({
+    time: 0,
+    scene: null,
+    sceneTime: 0,
+    isCueTriggered: () => false,
+    cueProgress: () => 0,
+  });
+
+  /**
+   * 主组件：吃 timeline + audio，提供 context
+   *
+   * Props:
+   *   timeline       timeline.json 对象（必需）
+   *   audioSrc       voiceover.mp3 路径（必需）
+   *   width/height   Stage 尺寸，默认 1920x1080
+   *   background     默认 '#0e0e0e'
+   *   controls       是否显示底部播放条，默认 true
+   *   children       动画内容（用 <Scene>/<Cue> 组织）
+   */
+  function NarrationStage({
+    timeline,
+    audioSrc,
+    width = 1920,
+    height = 1080,
+    background = '#0e0e0e',
+    controls = true,
+    children,
+  }) {
+    const audioRef = React.useRef(null);
+    const [time, setTime] = React.useState(0);
+    const [playing, setPlaying] = React.useState(false);
+    const recording = typeof window !== 'undefined' && window.__recording === true;
+
+    // 暴露给 render-video.js
+    React.useEffect(() => {
+      if (typeof window === 'undefined') return;
+      window.__totalDuration = timeline.totalDuration;
+      window.__ready = true;
+    }, [timeline.totalDuration]);
+
+    // 时间 tick
+    React.useEffect(() => {
+      let raf;
+      if (recording) {
+        // Seek-render（render-video-seek.js 注入 window.__seekRender）：冻结自驱时钟，
+        // 由外部 window.__seek(t) 逐帧推进。每帧都是确定性 seek，不起 rAF。
+        if (typeof window !== 'undefined' && window.__seekRender) {
+          window.__seek = (t) => setTime(Math.min(t, timeline.totalDuration));
+          return;
+        }
+        // 录视频模式：rAF wall-clock 自驱动从 0 开始
+        // 兼容 render-video.js（它依赖动画自然推进 + window.__seek 复位）
+        let startedAt = null;
+        const tick = (now) => {
+          if (startedAt === null) startedAt = now;
+          setTime(Math.min((now - startedAt) / 1000, timeline.totalDuration));
+          raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+        // 暴露 __seek 给 render-video.js 在 ready 后调 __seek(0) 复位
+        if (typeof window !== 'undefined') {
+          window.__seek = (t) => {
+            startedAt = performance.now() - t * 1000;
+            setTime(t);
+          };
+        }
+      } else {
+        // 实播模式：跟随 audio.currentTime
+        const tick = () => {
+          if (audioRef.current && !audioRef.current.paused) {
+            setTime(audioRef.current.currentTime);
+          }
+          raf = requestAnimationFrame(tick);
+        };
+        tick();
+      }
+      return () => cancelAnimationFrame(raf);
+    }, [recording, timeline.totalDuration]);
+
+    // 当前 scene
+    const currentScene = React.useMemo(() => {
+      if (!timeline.scenes) return null;
+      // 找到 start <= time < end 的段。最后一段保留到 end
+      for (let i = 0; i < timeline.scenes.length; i++) {
+        const s = timeline.scenes[i];
+        const next = timeline.scenes[i + 1];
+        if (time >= s.start && (!next || time < next.start)) return s;
+      }
+      return timeline.scenes[0];
+    }, [time, timeline.scenes]);
+
+    const sceneTime = currentScene ? Math.max(0, time - currentScene.start) : 0;
+
+    // 找 cue 状态（按 absoluteTime 比较，跨 scene 也能查）
+    const allCues = React.useMemo(() => {
+      const map = {};
+      for (const s of timeline.scenes || []) {
+        for (const c of s.cues || []) {
+          map[c.id] = c;
+        }
+      }
+      return map;
+    }, [timeline.scenes]);
+
+    const isCueTriggered = React.useCallback(
+      (cueId) => {
+        const c = allCues[cueId];
+        if (!c) return false;
+        return time >= c.absoluteTime;
+      },
+      [allCues, time],
+    );
+
+    /** 触发后多少秒 0→1，>1 后保持 1。用于 cue 后做渐入动画 */
+    const cueProgress = React.useCallback(
+      (cueId, ramp = 0.5) => {
+        const c = allCues[cueId];
+        if (!c) return 0;
+        const dt = time - c.absoluteTime;
+        if (dt <= 0) return 0;
+        if (dt >= ramp) return 1;
+        return dt / ramp;
+      },
+      [allCues, time],
+    );
+
+    const ctx = { time, scene: currentScene, sceneTime, isCueTriggered, cueProgress, timeline };
+
+    // play/pause/seek 控制
+    const handlePlayPause = () => {
+      if (!audioRef.current) return;
+      if (audioRef.current.paused) {
+        audioRef.current.play();
+        setPlaying(true);
+      } else {
+        audioRef.current.pause();
+        setPlaying(false);
+      }
+    };
+
+    const handleSeek = (e) => {
+      if (!audioRef.current) return;
+      const t = parseFloat(e.target.value);
+      audioRef.current.currentTime = t;
+      setTime(t);
+    };
+
+    const handleAudioEnded = () => setPlaying(false);
+
+    return (
+      <NarrationContext.Provider value={ctx}>
+        <div
+          style={{
+            position: 'relative',
+            width,
+            height,
+            background,
+            overflow: 'hidden',
+            color: '#fff',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif',
+          }}
+        >
+          {children}
+        </div>
+        {!recording && (
+          <audio
+            ref={audioRef}
+            src={audioSrc}
+            preload="auto"
+            onEnded={handleAudioEnded}
+          />
+        )}
+        {!recording && controls && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '12px 16px',
+              background: '#1a1a1a',
+              color: '#ddd',
+              fontFamily: 'monospace',
+              fontSize: 13,
+              width,
+              boxSizing: 'border-box',
+            }}
+          >
+            <button
+              onClick={handlePlayPause}
+              style={{
+                padding: '6px 14px',
+                background: '#fff',
+                color: '#000',
+                border: 0,
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              {playing ? '❚❚ Pause' : '▶ Play'}
+            </button>
+            <input
+              type="range"
+              min={0}
+              max={timeline.totalDuration}
+              step={0.01}
+              value={time}
+              onChange={handleSeek}
+              style={{ flex: 1 }}
+            />
+            <span style={{ minWidth: 110, textAlign: 'right' }}>
+              {time.toFixed(2)} / {timeline.totalDuration.toFixed(2)}s
+            </span>
+            <span
+              style={{
+                padding: '4px 10px',
+                background: '#2a2a2a',
+                borderRadius: 4,
+                minWidth: 100,
+                textAlign: 'center',
+              }}
+            >
+              {currentScene ? currentScene.id : '—'}
+            </span>
+          </div>
+        )}
+      </NarrationContext.Provider>
+    );
+  }
+
+  /**
+   * Scene 包裹器：只在指定 scene id 激活时渲染 children
+   *
+   * Props:
+   *   id        scene id（对应 timeline.scenes[].id）
+   *   children  渲染内容；可以是 ReactNode 或 (sceneTime, sceneInfo) => ReactNode
+   *   keepMounted 默认 false。设 true 则一直挂载只切换 visibility（动画连贯需要时用）
+   */
+  function Scene({ id, children, keepMounted = false }) {
+    const { scene, sceneTime } = React.useContext(NarrationContext);
+    const isActive = scene && scene.id === id;
+    if (!isActive && !keepMounted) return null;
+    const content = typeof children === 'function' ? children(sceneTime, scene) : children;
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          opacity: isActive ? 1 : 0,
+          pointerEvents: isActive ? 'auto' : 'none',
+          transition: keepMounted ? 'opacity 0.2s' : undefined,
+        }}
+      >
+        {content}
+      </div>
+    );
+  }
+
+  /**
+   * Cue 包裹器：监听 cue 触发状态
+   *
+   * Props:
+   *   id        cue id（对应 timeline.scenes[].cues[].id）
+   *   ramp      cue 触发后 progress 0→1 的 ramp 时长（秒），默认 0.5
+   *   children  必须是函数：(triggered: bool, progress: 0-1) => ReactNode
+   */
+  function Cue({ id, ramp = 0.5, children }) {
+    const { isCueTriggered, cueProgress } = React.useContext(NarrationContext);
+    const triggered = isCueTriggered(id);
+    const progress = cueProgress(id, ramp);
+    return children(triggered, progress);
+  }
+
+  /** Hook：在自定义组件里直接拿 narration 状态 */
+  function useNarration() {
+    return React.useContext(NarrationContext);
+  }
+
+  /**
+   * splitChunkToLines · 把一段文字按标点切成 ≤maxLen 字的短行
+   *
+   * 用于字幕显示——B 站标准是单行 ≤12 字便于阅读。本函数：
+   * 1. 先按强标点（。！？\n）切句，绝不跨句号截断
+   * 2. 每句 ≤ maxLen 直接用，否则按弱标点（，、；：）切片合并
+   * 3. 中英混合：英文/数字按 0.5 字算视觉宽度
+   * 4. 兜底硬切（罕见：单个标点段超 maxLen）
+   *
+   * @param text   原文
+   * @param maxLen 单行最大视觉长度，默认 13（≈12 字 + 一个标点）
+   * @returns 切好的字幕行数组
+   */
+  function visualLen(s) {
+    let n = 0;
+    for (const ch of s) n += /[a-zA-Z0-9 .,'":;\-]/.test(ch) ? 0.5 : 1;
+    return n;
+  }
+  function splitChunkToLines(text, maxLen = 13) {
+    const lines = [];
+    const sentences = [];
+    let buf = '';
+    for (const ch of text) {
+      buf += ch;
+      if ('。！？\n'.includes(ch)) { if (buf.trim()) sentences.push(buf.trim()); buf = ''; }
+    }
+    if (buf.trim()) sentences.push(buf.trim());
+    for (const sent of sentences) {
+      if (visualLen(sent) <= maxLen) { lines.push(sent); continue; }
+      const parts = [];
+      let pbuf = '';
+      for (const ch of sent) {
+        pbuf += ch;
+        if ('，、；：'.includes(ch)) { parts.push(pbuf); pbuf = ''; }
+      }
+      if (pbuf) parts.push(pbuf);
+      let merged = '';
+      for (const p of parts) {
+        if (visualLen(merged) + visualLen(p) <= maxLen) merged += p;
+        else { if (merged) lines.push(merged); merged = p; }
+      }
+      if (merged) {
+        if (visualLen(merged) <= maxLen) lines.push(merged);
+        else {
+          let hbuf = '';
+          for (const ch of merged) { hbuf += ch; if (visualLen(hbuf) >= maxLen) { lines.push(hbuf); hbuf = ''; } }
+          if (hbuf) lines.push(hbuf);
+        }
+      }
+    }
+    return lines.filter(l => l.trim());
+  }
+
+  /**
+   * Subtitles · B 站风格字幕组件（白光晕深墨字，无背景，按 chunks 时间显示）
+   *
+   * 自动从当前 scene.chunks 取活动 chunk，按 splitChunkToLines 切成短行，
+   * 按字数比例分配 chunk 时间窗给每行显示。
+   *
+   * 必需：timeline.scenes[].chunks[]（narrate-pipeline.mjs 已默认输出）
+   *
+   * Props（可覆盖默认样式）：
+   *   bottom    距底部像素，默认 90（不贴边）
+   *   fontSize  字号，默认 32
+   *   color     字色，默认深墨 #1a1a1a（适合浅纸白底）
+   *   haloColor 光晕色，默认 rgba(245,241,232,0.9)（适合 #f5f1e8 底）
+   *   maxLen    单行最大视觉长度，默认 13
+   *
+   * 深底场景：把 color 改成 '#fff'，haloColor 改成 'rgba(0,0,0,0.85)' 即可。
+   *
+   * 卡拉OK模式（字级高亮，需 timeline chunks 里带 words——narrate-pipeline.mjs 默认输出）：
+   *   karaoke       true 开启，默认 false。整行显示，读到哪个字哪个字变色
+   *   karaokeColor  已读字的颜色，默认品牌橙 '#e8590c'
+   *   chunk 没有 words 数据时自动回落到普通 chunk 模式，调用方不用做判断。
+   *   注意：words 是 TN 后文本（"2025"→"二零二五"），卡拉OK行直接由 words 拼出，
+   *   保证高亮与发音严格对齐（与 chunk.text 原文可能有差异）。
+   */
+  function splitWordsToLines(words, maxLen = 13) {
+    // 把字级时间戳 token 贪心打包成 ≤maxLen 的行；强标点（。！？）后强制换行，绝不跨句号
+    const lines = [];
+    let cur = [];
+    let curLen = 0;
+    for (const w of words) {
+      const wLen = visualLen(w.text);
+      if (cur.length > 0 && curLen + wLen > maxLen) { lines.push(cur); cur = []; curLen = 0; }
+      cur.push(w);
+      curLen += wLen;
+      if (/[。！？]\s*$/.test(w.text)) { lines.push(cur); cur = []; curLen = 0; }
+    }
+    if (cur.length > 0) lines.push(cur);
+    return lines;
+  }
+
+  function Subtitles({ bottom = 90, fontSize = 32, color = '#1a1a1a', haloColor = 'rgba(245,241,232,0.9)', maxLen = 13, karaoke = false, karaokeColor = '#e8590c' } = {}) {
+    const { time, scene } = React.useContext(NarrationContext);
+    if (!scene || !scene.chunks) return null;
+    const active = scene.chunks.find(c => time >= c.absoluteStart && time < c.absoluteEnd);
+    if (!active) return null;
+
+    // —— 卡拉OK模式：整行显示 + 逐字高亮（读到即变色，无 CSS transition，seek 渲染确定性）——
+    if (karaoke && active.words && active.words.length > 0) {
+      const wordLines = splitWordsToLines(active.words, maxLen);
+      let activeWLine = wordLines[0];
+      for (const ln of wordLines) {
+        if (time >= ln[0].absoluteStart) activeWLine = ln;
+        else break;
+      }
+      const lineStart = activeWLine[0].absoluteStart;
+      const lineProg = Math.max(0, Math.min(1, (time - (lineStart - 0.15)) / 0.15)); // 行提前 0.15s 淡入
+      return React.createElement('div', {
+        style: { position: 'absolute', left: 0, right: 0, bottom, display: 'flex', justifyContent: 'center', pointerEvents: 'none', zIndex: 50 },
+      }, React.createElement('div', {
+        key: lineStart,
+        style: {
+          fontFamily: '"PingFang SC", "Noto Sans SC", -apple-system, sans-serif',
+          fontSize, fontWeight: 600,
+          letterSpacing: '0.04em', lineHeight: 1.2, textAlign: 'center',
+          textShadow: `0 0 6px ${haloColor}, 0 0 12px ${haloColor}, 0 1px 2px rgba(255,255,255,0.5)`,
+          opacity: lineProg, transform: `translateY(${(1 - lineProg) * 4}px)`,
+        },
+      }, activeWLine.map((w, i) => React.createElement('span', {
+        key: i,
+        style: { color: time >= w.absoluteStart ? karaokeColor : color },
+      }, w.text))));
+    }
+
+    // —— 普通 chunk 模式（原有行为，不变）——
+    const lines = splitChunkToLines(active.text, maxLen);
+    if (lines.length === 0) return null;
+    const totalLen = lines.reduce((s, l) => s + visualLen(l), 0);
+    const chunkDur = active.absoluteEnd - active.absoluteStart;
+    let acc = active.absoluteStart;
+    let activeLine = lines[lines.length - 1];
+    let lineStart = active.absoluteStart;
+    for (const line of lines) {
+      const dur = (visualLen(line) / totalLen) * chunkDur;
+      if (time < acc + dur) { activeLine = line; lineStart = acc; break; }
+      acc += dur;
+    }
+    const lineProg = Math.min(1, (time - lineStart) / 0.15);
+    return React.createElement('div', {
+      style: { position: 'absolute', left: 0, right: 0, bottom, display: 'flex', justifyContent: 'center', pointerEvents: 'none', zIndex: 50 },
+    }, React.createElement('div', {
+      key: lineStart,
+      style: {
+        fontFamily: '"PingFang SC", "Noto Sans SC", -apple-system, sans-serif',
+        fontSize, fontWeight: 600, color,
+        letterSpacing: '0.04em', lineHeight: 1.2, textAlign: 'center',
+        textShadow: `0 0 6px ${haloColor}, 0 0 12px ${haloColor}, 0 1px 2px rgba(255,255,255,0.5)`,
+        opacity: lineProg, transform: `translateY(${(1 - lineProg) * 4}px)`,
+      },
+    }, activeLine));
+  }
+
+  /**
+   * useSceneFade · scene 内辅助元素的软淡入淡出 helper
+   *
+   * 铁律第二条要求 scene 之间禁止硬切——但 scene 内辅助元素（数据卡、引用块）
+   * 一旦 cue 触发后默认会一直亮到 scene 结束。如果不淡出，离开本段进入下段时
+   * 这些元素会突兀地存在或瞬间消失。本 hook 提供 [入场淡入 → hold → 出场淡出] 的统一软切换。
+   *
+   * 用法（把 op 乘进辅助元素的 opacity）：
+   *   const op = useSceneFade('md-side', 0.6, 0.8);  // 进 0.6s, 出 0.8s
+   *   <Cue id="agents-md">{(t, p) => (
+   *     <div style={{ opacity: op * p }}>...</div>
+   *   )}</Cue>
+   *
+   * 这样数据卡片在 md-side 段开始 0.6s 内淡入，在段结束前 0.8s 开始淡出，
+   * 与下一段的辅助元素淡入形成 overlap，画面不出现硬切。
+   *
+   * @param sceneId  scene id
+   * @param fadeIn   入场淡入秒数（默认 0.5）
+   * @param fadeOut  出场淡出秒数（默认 0.5）
+   * @returns 0-1 之间的不透明度倍率
+   */
+  function useSceneFade(sceneId, fadeIn = 0.5, fadeOut = 0.5) {
+    const { time, timeline } = React.useContext(NarrationContext);
+    if (!timeline) return 0;
+    const s = timeline.scenes.find(x => x.id === sceneId);
+    if (!s) return 0;
+    const inT = (time - s.start) / fadeIn;
+    const outT = (s.end - time) / fadeOut;
+    const v = Math.min(1, Math.min(inT, outT));
+    return Math.max(0, v);
+  }
+
+  return { NarrationStage, Scene, Cue, useNarration, useSceneFade, Subtitles, splitChunkToLines, splitWordsToLines };
+})();
+
+if (typeof window !== 'undefined') {
+  Object.assign(window, { NarrationStageLib });
+}
+
+</script>
+
+<script type="text/babel">
+const { NarrationStage, Scene, Cue, useNarration, Subtitles, splitChunkToLines } = NarrationStageLib;
+
+/* ───────── 时间轴（实测） ─────────
+   scenes.json 实测时长 + 0.55s 段间 gap；chunks 运行时按标点切行等比铺时 */
+const RAW = {
+  title: "星厨传承 · 参赛演示片",
+  totalDuration: 108.572,
+  voiceover: "voiceover.mp3",
+  scenes: [
+    { id:"s01-hook",      start:0.8,   end:6.512,  text:"在餐饮行业，「你是谁带的」，往往比「你在哪里干过」更重要。", cues:[["hook",3.164]] },
+    { id:"s02-problem",   start:7.062, end:18.414, text:"上千万中国厨师里，最难换工作的，恰恰是手艺最好的那批老师傅。他们会做三十六道菜，简历却只能写八个字。", cues:[["36",15.235]] },
+    { id:"s03-product",   start:18.964,end:28.492, text:"星厨传承，把行业最底层的信任——师承——数字化。一张档案，就是一位厨师的手艺与出处。", cues:[["card",25.77]] },
+    { id:"s04-lineage",   start:29.042,end:38.81,  text:"这是我们真实公开档案里的一条师承链：川菜第三代史正良，门下十八人，每一位徒弟，都有出处。", cues:[["chain",37.7]] },
+    { id:"s05-honest",    start:39.36, end:45.72,  text:"没核实的，我们诚实标注「待补」。宁可谱瘦，不让谱说谎。", cues:[["wait",44.542]] },
+    { id:"s06-source",    start:46.27, end:53.062, text:"每条师承都附来源链接，评委、雇主、学徒，都能亲自验证。", cues:[["verify",50.546]] },
+    { id:"s07-jobs",      start:53.612,end:65.828, text:"招聘匹配基于菜系、师门、师承距离、地域、薪资五个维度打分。每个分数都能拆开看——AI 只解释，不玄学。", cues:[["score",61.996]] },
+    { id:"s08-ai",        start:66.378,end:79.098, text:"不会写字的老师傅，说一段大白话。AI 严格按口述整理成规范档案，绝不编造。一键复制，粘到微信，就能投出去。", cues:[["speak",71.658],["copy",76.698]] },
+    { id:"s09-community", start:79.648,end:88.744, text:"同行切磋、师傅招徒、学徒拜师。社区按菜系成圈，帖子存在你自己浏览器里。", cues:[["circle",85.106]] },
+    { id:"s10-vision",    start:89.294,end:99.398, text:"让不擅表达的劳动者被看见。这个范式，还能帮助木匠、绣娘、理发师——帮助每一种「手艺型」职业。", cues:[["paradigm",93.467]] },
+    { id:"s11-end",       start:99.948,end:107.172,text:"星厨传承——以师承为信用，用 TRAE 构建。世界很大，放手去造。", cues:[["brand",106.296]] },
+  ],
+};
+// 运行时补 chunks（等比铺时，与 build_timeline 同口径）
+RAW.scenes = RAW.scenes.map(s => {
+  const lines = splitChunkToLines(s.text, 13);
+  const total = lines.reduce((a, l) => a + l.length, 0) || 1;
+  let t = s.start;
+  const chunks = lines.map(l => {
+    const d = s.duration * l.length / total;
+    const c = { text: l, start: t - s.start, end: t - s.start + d, absoluteStart: t, absoluteEnd: t + d };
+    t += d; return c;
+  });
+  return { ...s, duration: s.end - s.start, chunks, cues: s.cues.map(([id, absoluteTime]) => ({ id, absoluteTime })) };
+});
+
+/* ───────── 工具 ───────── */
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const expoOut = t => t >= 1 ? 1 : 1 - Math.pow(2, -10 * t);
+const PAPER = "#F5F0E6", INK = "#1A1714", VERM = "#B03A2E", MOSS = "#5B6B4F", GOLD = "#C9A24A";
+const SERIF = "'Noto Serif SC','Fraunces','Songti SC',serif";
+
+/* hero 卡在各 scene 的状态：位置（%中心）/宽/透明度/内容相位 */
+const HERO_KEYS = {
+  "s01-hook":      { x:50, y:76, w:520, op:.32, phase:0 },
+  "s02-problem":   { x:50, y:79, w:520, op:.30, phase:0 },
+  "s03-product":   { x:50, y:51, w:760, op:1,   phase:1 },
+  "s04-lineage":   { x:20, y:48, w:540, op:1,   phase:2 },
+  "s05-honest":    { x:20, y:48, w:540, op:.55, phase:2 },
+  "s06-source":    { x:20, y:48, w:540, op:.55, phase:2 },
+  "s07-jobs":      { x:19, y:50, w:500, op:1,   phase:2 },
+  "s08-ai":        { x:61, y:51, w:730, op:1,   phase:3 },
+  "s09-community": { x:17, y:72, w:430, op:1,   phase:3 },
+  "s10-vision":    { x:50, y:50, w:600, op:1,   phase:3 },
+  "s11-end":       { x:24, y:42, w:430, op:1,   phase:3 },
+};
+/* 每镜摄像机（镜内 settle，禁尾漂） */
+const CAM_KEYS = {
+  "s01-hook":1, "s02-problem":1.07, "s03-product":1.22, "s04-lineage":1,
+  "s05-honest":1.1, "s06-source":1.1, "s07-jobs":1, "s08-ai":1.06,
+  "s09-community":1, "s10-vision":1.05, "s11-end":1,
+};
+/* 聚光中心覆盖（默认跟随 hero 卡）：辅助面板为主角的镜头，聚光让位 */
+const SPOT_KEYS = { "s04-lineage":[58,45], "s07-jobs":[60,45], "s09-community":[62,42] };
+/* 每镜聚光/暗角强度 */
+const VIGNETTE = {
+  "s01-hook":.44, "s02-problem":.4, "s03-product":.34, "s04-lineage":.3,
+  "s05-honest":.36, "s06-source":.3, "s07-jobs":.3, "s08-ai":.3,
+  "s09-community":.3, "s10-vision":.34, "s11-end":.38,
+};
+
+const useSceneInfo = () => {
+  const { time, scene } = useNarration();
+  const idx = RAW.scenes.findIndex(s => s.id === scene?.id);
+  const cur = scene || RAW.scenes[0];
+  const prev = RAW.scenes[Math.max(0, idx - 1)];
+  const sceneTime = time - cur.start;
+  const settle = expoOut(clamp(sceneTime / 0.9));
+  return { time, cur, prev, sceneTime, settle, idx };
+};
+
+/* ───────── hero 档案卡（对照 AssistantPage 真实界面 DOM 重建） ───────── */
+const 口述 = "我叫周慕白，55 岁，淮扬菜老师傅，扬州人，30 年淮扬功夫，刀工见长，文思豆腐、大煮干丝是拿手活，带过 20 多个徒弟，现在想找个高级酒店的淮扬菜顾问或行政总厨岗位，地域不限，薪资 30K 以上。";
+const 口述_CHUNKS = [
+  "我叫周慕白，55 岁，淮扬菜老师傅，扬州人，",
+  "30 年淮扬功夫，刀工见长，文思豆腐、大煮干丝是拿手活，",
+  "带过 20 多个徒弟，",
+  "现在想找个高级酒店的淮扬菜顾问或行政总厨岗位，地域不限，薪资 30K 以上。",
+];
+const 口述_DONE = 74.5;   // 语音转写全部涌入完成（chunk 涌现，非逐字打字）
+
+const Chip = ({ children, style = {} }) => (
+  <span style={{
+    display:"inline-block", padding:"5px 14px", border:"1px solid rgba(26,23,20,.45)",
+    borderRadius:3, fontSize:15, color:INK, background:"rgba(26,23,20,.05)", fontFamily:SERIF, ...style,
+  }}>{children}</span>
+);
+
+const SkeletonRow = ({ w, style = {} }) => (
+  <div style={{ width:w, height:14, background:"rgba(26,23,20,.12)", borderRadius:2, marginBottom:12, ...style }} />
+);
+
+function HeroCard() {
+  const { time, cur, prev, sceneTime, settle } = useSceneInfo();
+  const to = HERO_KEYS[cur.id], from = HERO_KEYS[prev.id] || to;
+  const k = {
+    x: lerp(from.x, to.x, settle), y: lerp(from.y, to.y, settle),
+    w: lerp(from.w, to.w, settle), op: lerp(from.op, to.op, settle),
+  };
+  const breath = 1 + Math.sin(time * 0.7) * 0.012;
+  const phase = settle > .96 ? to.phase : from.phase;
+  // s08 生成戏内部节拍：chunk 涌现（语音转写）→ 字段三波显影 → 完整度计数 → 复制
+  const speakT = cur.id === "s08-ai" ? 71.658 : null;
+  const copyT  = cur.id === "s08-ai" ? 76.698 : null;
+  const allDone = speakT ? time >= 口述_DONE : (phase >= 3 && cur.id !== "s08-ai");
+  const fillWave = (speakT || phase >= 3) ? clamp((time - (speakT ? 口述_DONE : 0) - 0.1) / 1.6, 0, 1) : 0;
+  const waves = [fillWave > .18, fillWave > .45, fillWave > .72];
+  const pct = phase === 3 ? (speakT ? Math.round(75 * expoOut(clamp((time - 75.4) / 1.0, 0, 1))) : 75) : 0;
+  const pressed = copyT && time >= copyT;
+  const toast = copyT && time >= copyT + 0.3 && time <= copyT + 3.2;
+
+  const show = (gate) => gate ? {} : { visibility:"hidden" };
+  const showRow = (i) => phase === 2 || (phase === 3 && waves[i]);
+
+  return (
+    <div style={{
+      position:"absolute", left:`${k.x}%`, top:`${k.y}%`, width:k.w,
+      transform:`translate(-50%,-50%) scale(${breath})`, opacity:k.op,
+      willChange:"transform,opacity",
+    }}>
+      {/* 完整度横幅 */}
+      <div style={{
+        display:"flex", alignItems:"center", justifyContent:"space-between", gap:10,
+        border:"1px solid rgba(176,58,46,.5)", background:"rgba(176,58,46,.08)",
+        borderRadius:4, padding:"9px 16px", marginBottom:12, fontFamily:SERIF,
+        opacity: phase === 3 && pct > 0 ? 1 : 0,
+        transition:"opacity .3s", ...show(phase === 3 && pct > 0),
+      }}>
+        <span style={{ fontSize:k.w * 0.026, color:VERM, letterSpacing:1, whiteSpace:"nowrap" }}>
+          档案信息完整度 {pct}%，建议补充：从业年限、师承
+        </span>
+        <span style={{ fontSize:k.w * 0.023, color:PAPER, background:VERM, borderRadius:3, padding:"4px 12px", whiteSpace:"nowrap" }}>补充信息</span>
+      </div>
+      {/* 卡体 */}
+      <div style={{
+        background:PAPER, border:"1.5px solid rgba(26,23,20,.8)", borderRadius:6,
+        boxShadow:"0 18px 60px rgba(15,12,8,.35)", padding:`${k.w * 0.045}px ${k.w * 0.05}px`,
+        fontFamily:SERIF,
+      }}>
+        <div style={{ fontSize:k.w * 0.072, fontWeight:900, color:INK, lineHeight:1.15, ...show(phase >= 1) }}>
+          周慕白 <span style={{ fontSize:k.w * 0.032, fontWeight:400, color:"rgba(26,23,20,.55)" }}>· 55 岁</span>
+        </div>
+        <div style={{ margin:"10px 0 4px", ...show(phase >= 1) }}>
+          <Chip style={{ color:VERM, borderColor:"rgba(176,58,46,.55)", background:"rgba(176,58,46,.06)" }}>淮扬菜</Chip>
+          <Chip style={{ marginLeft:8 }}>扬州</Chip>
+        </div>
+        {phase === 0 && <>
+          <SkeletonRow w="72%" style={{ marginTop:18 }} />
+          <SkeletonRow w="88%" /><SkeletonRow w="64%" /><SkeletonRow w="80%" />
+        </>}
+        {phase >= 1 && <>
+          <div style={{ fontSize:k.w * 0.026, color:"rgba(26,23,20,.55)", letterSpacing:3, margin:"16px 0 8px", borderTop:"1px solid rgba(26,23,20,.18)", paddingTop:12 }}>
+            拿手菜
+          </div>
+          <div style={{ ...show(showRow(0)) }}>
+            <Chip>带过 20 多个徒弟</Chip>
+          </div>
+          <div style={{ marginTop:8, ...show(showRow(1)) }}>
+            <Chip style={{ fontSize:14 }}>现在想找个高级酒店的淮扬菜顾问或行政总厨岗位</Chip>
+          </div>
+          <div style={{ marginTop:8, ...show(showRow(2)) }}>
+            <Chip>地域不限</Chip> <Chip style={{ marginLeft:8 }}>薪资 30K 以上</Chip>
+          </div>
+          {phase === 1 && <>
+            <SkeletonRow w="58%" style={{ marginTop:10 }} />
+            <SkeletonRow w="84%" />
+          </>}
+          <div style={{ fontSize:k.w * 0.026, color:"rgba(26,23,20,.55)", letterSpacing:3, margin:"14px 0 6px", borderTop:"1px solid rgba(26,23,20,.18)", paddingTop:12 }}>
+            获奖与资质
+          </div>
+          <div style={{ fontSize:k.w * 0.03, fontStyle:"italic", color:"rgba(26,23,20,.4)", ...show(phase === 2 || (phase === 3 && fillWave >= 1)) }}>
+            未提供，可在此补充
+          </div>
+        </>}
+        {/* 复制按钮 + toast（镜 8 高潮） */}
+        {phase === 3 && allDone && (speakT ? time >= 75.6 : true) && (
+          <div style={{ marginTop:16, display:"flex", alignItems:"center", gap:14 }}>
+            <span style={{
+              display:"inline-block", padding:"10px 26px", borderRadius:4,
+              background:INK, color:PAPER, fontSize:k.w * 0.03,
+              transform: pressed ? "scale(.94)" : "scale(1)",
+            }}>复制求职档案 →</span>
+            <span style={{ fontSize:k.w * 0.028, color:MOSS, opacity:toast ? 1 : 0, transition:"opacity .25s" }}>
+              已复制 ✓ 粘到微信就能投出去
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ───────── 聚光 & 纸纹 & 摄像机 ───────── */
+function Atmosphere() {
+  const { time, cur, prev, settle } = useSceneInfo();
+  const k = HERO_KEYS[cur.id], kp = HERO_KEYS[prev.id] || k;
+  const over = SPOT_KEYS[cur.id], overP = SPOT_KEYS[prev.id] || over;
+  const vx = over ? lerp(overP[0], over[0], settle) : lerp(kp.x, k.x, settle);
+  const vy = over ? lerp(overP[1], over[1], settle) : lerp(kp.y, k.y, settle);
+  const a = lerp(VIGNETTE[prev.id] ?? .5, VIGNETTE[cur.id] ?? .5, settle);
+  const drift = Math.sin(time * 0.14) * 12;
+  return (
+    <div style={{ position:"absolute", inset:0, pointerEvents:"none" }}>
+      {/* 纸纹（feTurbulence 噪点，缓慢漂移） */}
+      <svg width="1920" height="1080" style={{ position:"absolute", opacity:.05, transform:`translateX(${drift}px)` }}>
+        <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" /></filter>
+        <rect width="100%" height="100%" filter="url(#grain)" />
+      </svg>
+      {/* 聚光（跟随卡心，柔和但保持纸面清晰） */}
+      <div style={{
+        position:"absolute", inset:0,
+        background:`radial-gradient(ellipse 52% 58% at ${vx}% ${vy}%, rgba(255,250,238,.05) 0%, rgba(255,250,238,0) 55%, rgba(12,9,6,${a}) 88%)`,
+      }} />
+    </div>
+  );
+}
+
+function CameraRig({ children }) {
+  const { cur, prev, settle } = useSceneInfo();
+  const z = lerp(CAM_KEYS[prev.id] ?? 1, CAM_KEYS[cur.id] ?? 1, settle);
+  return <div style={{ position:"absolute", inset:0, transform:`scale(${z})`, willChange:"transform" }}>{children}</div>;
+}
+
+/* ───────── 镜 1/2 大字 ───────── */
+function HookTitles() {
+  const { time, cur } = useSceneInfo();
+  if (!["s01-hook","s02-problem"].includes(cur.id)) return null;
+  const inS01 = cur.id === "s01-hook";
+  const t1 = inS01 ? clamp((time - 1.1) / 0.9) : 0;                          // 「你是谁带的？」只在镜 1
+  const t1out = inS01 ? 0 : clamp((time - cur.start) / 0.5);                 // 镜 2 开头 0.5s 内虚焦化开
+  const t2 = !inS01 ? clamp((time - cur.start - 0.3) / 0.8) : 0;
+  const t3 = !inS01 ? clamp((time - 15.235) / 0.7) : 0;                      // cue:36 第二拍
+  const fade = !inS01 ? clamp((time - 17.4) / 0.9) : 0;                      // 末段化开
+  const bl = (!inS01 ? t1out * 10 : 0) + fade * 12;
+  return (
+    <div style={{ position:"absolute", inset:0, fontFamily:SERIF }}>
+      <div style={{
+        position:"absolute", left:"50%", top:"40%", transform:"translate(-50%,-50%)",
+        textAlign:"center", color:INK, opacity:(1 - t1out) * (1 - fade),
+        filter:`blur(${inS01 ? 0 : t1out * 12}px)`,
+      }}>
+        <div style={{ fontSize:88, fontWeight:900, letterSpacing:6, opacity:expoOut(t1) }}>
+          在餐饮行业，「你是谁带的」<span style={{ color:VERM }}>，</span>
+        </div>
+        <div style={{ fontSize:46, fontWeight:400, marginTop:22, color:"rgba(26,23,20,.72)", opacity:expoOut(clamp(t1 - .4)) }}>
+          往往比「你在哪里干过」更重要。
+        </div>
+      </div>
+      {!inS01 && (
+        <div style={{
+          position:"absolute", left:"50%", top:"36%", transform:"translate(-50%,-50%)",
+          textAlign:"center", filter:`blur(${fade * 12}px)`, opacity:1 - fade,
+        }}>
+          <div style={{ fontSize:76, fontWeight:900, color:INK, letterSpacing:4, opacity:expoOut(t2) }}>
+            三十六道菜<span style={{ color:VERM }}>，</span>
+          </div>
+          <div style={{ fontSize:76, fontWeight:900, color:VERM, letterSpacing:4, marginTop:10, opacity:expoOut(t3) }}>
+            简历只有八个字。
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ───────── 镜 4-6 谱链面板（真实截图）+ 待补特写 + 来源卡 ───────── */
+const LINEAGE = { img:"素材/截图/03-lineage-shizhengliang.png", crop:[515,95,1385,885] };
+function CropImg({ src, crop, width, style = {} }) {
+  const [cx, cy, cw, ch] = crop;
+  const scale = width / cw;
+  return (
+    <div style={{ position:"relative", width, height:ch * scale, overflow:"hidden", ...style }}>
+      <img src={src} alt="" style={{
+        position:"absolute", width:1920 * scale,
+        left:-cx * scale, top:-cy * scale, display:"block",
+      }} />
+    </div>
+  );
+}
+
+function LineagePanel() {
+  const { time, cur } = useSceneInfo();
+  if (!["s04-lineage","s05-honest","s06-source"].includes(cur.id)) return null;
+  const intro = clamp((time - 29.3) / 1.4);
+  const exit = cur.id === "s06-source" ? clamp((time - 52.0) / 0.9) : 0;
+  const dim = cur.id === "s05-honest" ? 0.38 : 1;   // 镜 5 退暗，让位待补特写
+  return (
+    <div style={{
+      position:"absolute", right:"4.5%", top:"50%", transform:`translateY(-50%) translateX(${expoOut(exit) * 60}%)`,
+      opacity:expoOut(intro) * (1 - exit) * dim,
+    }}>
+      <CropImg src={LINEAGE.img} crop={LINEAGE.crop} width={1180}
+        style={{ border:"1px solid rgba(26,23,20,.25)", boxShadow:"0 24px 70px rgba(15,12,8,.3)" }} />
+      <div style={{
+        position:"absolute", right:14, bottom:12, fontFamily:SERIF, fontSize:15,
+        color:"rgba(245,240,230,.9)", letterSpacing:2, textShadow:"0 1px 6px rgba(12,9,6,.8)",
+      }}>
+        川菜谱 · 真实公开档案 · <span style={{ color:"rgba(245,240,230,.65)" }}>1,238 位厨师 · 262 条师承可溯</span>
+      </div>
+    </div>
+  );
+}
+
+/* 镜 5：DOM 重建「待补」人物卡（真实 derived 档案：陈波）+ 朱圈 */
+function WaitBadge() {
+  const { time, cur } = useSceneInfo();
+  if (cur.id !== "s05-honest") return null;
+  const t = clamp((time - 40.2) / 0.9);
+  const circle = clamp((time - 44.542) / 0.7);
+  const C = 2 * Math.PI * 118;
+  return (
+    <>
+      {/* 卡片（容器仅定位卡片自身） */}
+      <div style={{ position:"absolute", left:"50%", top:"50%", transform:"translate(-50%,-50%)", textAlign:"center" }}>
+      <div style={{
+        background:PAPER, border:"1.5px solid rgba(26,23,20,.75)", borderRadius:6,
+        padding:"34px 66px 28px", fontFamily:SERIF, boxShadow:"0 24px 80px rgba(15,12,8,.4)",
+        transform:`scale(${expoOut(t)})`, opacity:t, position:"relative",
+      }}>
+        <div style={{
+          width:96, height:96, border:"1.5px solid rgba(26,23,20,.8)", margin:"0 auto 14px",
+          display:"flex", alignItems:"center", justifyContent:"center",
+          fontSize:44, fontWeight:900, color:"rgba(26,23,20,.7)",
+        }}>陈</div>
+        <div style={{ fontSize:30, fontWeight:600, color:INK }}>
+          陈波 <span style={{
+            fontSize:15, color:VERM, border:"1px solid rgba(176,58,46,.5)", borderRadius:3,
+            padding:"2px 8px", marginLeft:10, verticalAlign:"middle",
+          }}>待补</span>
+        </div>
+        <div style={{ fontSize:16, color:"rgba(26,23,20,.55)", marginTop:8 }}>川菜 · 第四代 · 师承史正良</div>
+        <div style={{ fontSize:14, color:"rgba(26,23,20,.4)", marginTop:14, fontStyle:"italic" }}>
+          师承关系来自公开报道 · 档案待补全
+        </div>
+        {/* 朱圈 */}
+        <svg width="320" height="120" viewBox="0 0 320 120"
+          style={{ position:"absolute", left:"50%", top:"34%", transform:"translate(-50%,-50%) rotate(-4deg)", opacity:circle }}>
+          <ellipse cx="160" cy="60" rx="118" ry="46" fill="none" stroke={VERM} strokeWidth="3"
+            strokeDasharray={C} strokeDashoffset={C * (1 - expoOut(circle))} strokeLinecap="round" />
+        </svg>
+      </div>
+      </div>
+      {/* 标语（舞台级定位，避免与卡片容器互相干扰） */}
+      <div style={{
+        position:"absolute", left:"50%", top:"88.5%", transform:"translateX(-50%)",
+        fontFamily:SERIF, fontSize:30, fontWeight:600, color:PAPER, letterSpacing:6,
+        textShadow:"0 2px 14px rgba(12,9,6,.85)", whiteSpace:"nowrap",
+        opacity:expoOut(clamp((time - 42.2) / .8)),
+      }}>
+        宁可谱瘦<span style={{ color:VERM }}>，</span>不让谱说谎。
+      </div>
+    </>
+  );
+}
+
+/* 镜 6：来源卡 + 光标 + 点击涟漪 */
+function SourceCard() {
+  const { time, cur } = useSceneInfo();
+  if (cur.id !== "s06-source") return null;
+  const t = clamp((time - 46.8) / 0.8);
+  const draw = clamp((time - 48.8) / 0.7);
+  const go = clamp((time - 50.546) / 0.5);        // 光标弧线进度
+  const ripple = clamp((time - 51.35) / 0.6);
+  const mx2 = lerp(760, 355, go) + Math.sin(go * Math.PI) * -60;
+  const my2 = lerp(320, 92, go) + Math.sin(go * Math.PI) * 46;
+  return (
+    <div style={{
+      position:"absolute", left:"46%", top:"30%", transform:`translate(-50%,-50%) translateY(${(1 - expoOut(t)) * 40}px)`,
+      opacity:t, fontFamily:SERIF,
+    }}>
+      <div style={{
+        background:PAPER, border:"1.5px solid rgba(26,23,20,.75)", borderRadius:6,
+        padding:"26px 44px", boxShadow:"0 24px 80px rgba(15,12,8,.4)", minWidth:560,
+      }}>
+        <div style={{ fontSize:14, color:"rgba(26,23,20,.5)", letterSpacing:3, marginBottom:12 }}>师承出处 · SOURCE</div>
+        <div style={{ fontSize:26, fontWeight:600, color:INK, position:"relative", display:"inline-block" }}>
+          查看来源 · 百度百科 <span style={{ color:VERM }}>↗</span>
+          <span style={{
+            position:"absolute", left:0, bottom:-6, height:2, width:`${expoOut(draw) * 100}%`,
+            background:VERM,
+          }} />
+        </div>
+        <div style={{ fontSize:16, color:"rgba(26,23,20,.5)", marginTop:12, fontFamily:"'JetBrains Mono',Consolas,monospace" }}>
+          baike.baidu.com/item/蓝光鉴
+        </div>
+        <div style={{ fontSize:15, color:"rgba(26,23,20,.45)", marginTop:10 }}>
+          评委、雇主、学徒，都能亲自验证。
+        </div>
+        {/* 光标（卡内坐标系：链接行末 ≈ (355, 92)） */}
+        <svg width="700" height="340" viewBox="0 0 700 340"
+          style={{ position:"absolute", left:0, top:0, overflow:"visible", pointerEvents:"none", opacity:t }}>
+          <g transform={`translate(${Math.round(mx2)},${Math.round(my2)})`}>
+            <path d="M0 0 L10 26 L4 24 L0 32 Z" fill={INK} stroke={PAPER} strokeWidth="1.4" />
+          </g>
+          {ripple > 0 && ripple < 1 && [0, 0.1].map((d, i) => {
+            const r = clamp((time - 51.35 - d) / 0.5);
+            return <circle key={i} cx={355} cy={92} r={14 + r * 38 - (i ? 8 : 0)}
+              fill="none" stroke={VERM} strokeWidth={2 - i * 0.8} opacity={(1 - r) * 0.9} />;
+          })}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+/* ───────── 镜 7 匹配拆解（DOM 重建，对照 JobsPage） ───────── */
+function BreakdownPanel() {
+  const { time, cur } = useSceneInfo();
+  if (cur.id !== "s07-jobs") return null;
+  const score = Math.round(75 * expoOut(clamp((time - 61.996 - 0.3) / 0.9)));
+  const bars = [
+    ["菜系", "CUISINE", 40, 40], ["师门", "LINEAGE", 0, 25],
+    ["地域", "CITY", 20, 20], ["薪资", "SALARY", 15, 15],
+  ];
+  return (
+    <div style={{
+      position:"absolute", right:"6%", top:"50%", transform:"translateY(-50%)",
+      fontFamily:SERIF,
+    }}>
+      <div style={{
+        background:PAPER, border:"1.5px solid rgba(26,23,20,.8)", borderRadius:6,
+        boxShadow:"0 24px 70px rgba(15,12,8,.32)", padding:"34px 48px", width:640,
+      }}>
+        <div style={{ fontSize:14, color:"rgba(26,23,20,.5)", letterSpacing:3, marginBottom:6 }}>匹配度拆解 · 与 匿名厨师</div>
+        <div style={{ display:"flex", alignItems:"baseline", gap:10 }}>
+          <span style={{ fontSize:74, fontWeight:900, color:VERM, fontFamily:"'Fraunces',serif" }}>{score}</span>
+          <span style={{ fontSize:26, color:"rgba(26,23,20,.6)" }}>/100</span>
+          <span style={{ fontSize:15, color:"rgba(26,23,20,.5)", marginLeft:"auto" }}>菜系40 · 师门25 · 地域20 · 薪资15</span>
+        </div>
+        {bars.map(([cn, en, v, max], i) => {
+          const p = expoOut(clamp((time - 61.996 - i * 0.28) / 0.6));
+          const w = v / max * 100;
+          return (
+            <div key={cn} style={{ marginTop:20 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", fontSize:16, color:INK }}>
+                <span>{cn} <span style={{ fontSize:11, color:"rgba(26,23,20,.4)", letterSpacing:2 }}>{en}</span></span>
+                <span style={{ fontVariantNumeric:"tabular-nums" }}>{Math.round(v * p)}<span style={{ color:"rgba(26,23,20,.45)" }}> / {max}</span></span>
+              </div>
+              <div style={{ height:8, background:"rgba(26,23,20,.1)", borderRadius:2, marginTop:7 }}>
+                <div style={{
+                  height:"100%", width:`${w * p}%`,
+                  background:v / max > 0.6 ? VERM : (v > 0 ? GOLD : "rgba(26,23,20,.25)"),
+                  borderRadius:2,
+                }} />
+              </div>
+            </div>
+          );
+        })}
+        <div style={{
+          marginTop:22, padding:"12px 18px", borderLeft:"3px solid VERM",
+          borderLeftColor:VERM, background:"rgba(26,23,20,.04)", fontSize:16, color:INK,
+          opacity:clamp((time - 64.4) / 0.6),
+        }}>
+          核心契合点：<b>菜系</b> — 同为川菜
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ───────── 镜 8 口述气泡（chunk 涌现 = 语音转写节奏，光标常亮→闪烁） ───────── */
+function TypingBubble() {
+  const { time, cur } = useSceneInfo();
+  if (cur.id !== "s08-ai") return null;
+  const speakT = 71.658;
+  const shown = 口述_CHUNKS.map((c, i) => time >= speakT + 0.25 + i * 0.62 ? c : null).filter(Boolean);
+  const text = shown.join("");
+  const pouring = time >= speakT + 0.25 && time < 口述_DONE;
+  const blink = !pouring && time >= 口述_DONE && Math.floor((time - 口述_DONE) * 2.6) % 2 === 0;
+  const caretOn = pouring || blink || time < speakT + 0.25;
+  const t = clamp((time - 67.0) / 0.8);
+  return (
+    <div style={{
+      position:"absolute", left:"8%", top:"50%", transform:"translateY(-50%)", opacity:expoOut(t),
+      width:420, fontFamily:SERIF,
+    }}>
+      <div style={{ fontSize:14, color:"rgba(26,23,20,.5)", letterSpacing:3, marginBottom:12 }}>
+        老师傅的口述 · 大白话 / 语音输入
+      </div>
+      <div style={{
+        background:PAPER, border:"1.5px solid rgba(26,23,20,.75)", borderRadius:6,
+        padding:"24px 28px", fontSize:19, lineHeight:1.95, color:INK, minHeight:300,
+        boxShadow:"0 20px 60px rgba(15,12,8,.3)",
+      }}>
+        {shown.map((c, i) => (
+          <span key={i} style={{
+            display:"inline-block", animation:"none",
+            opacity:1, transform:`translateY(${(1 - clamp((time - (speakT + 0.25 + i * 0.62)) / 0.3)) * 8}px)`,
+          }}>{c}</span>
+        ))}
+        <span style={{
+          display:"inline-block", width:2.5, height:22, background:VERM,
+          verticalAlign:"-4px", marginLeft:2, opacity:caretOn ? 1 : 0,
+          boxShadow:"0 0 8px rgba(176,58,46,.6)",
+        }} />
+      </div>
+      <div style={{ fontSize:14, color:"rgba(26,23,20,.45)", marginTop:12, fontStyle:"italic" }}>
+        AI 严格按口述提取 · 只提取明确说出的信息，严禁编造
+      </div>
+    </div>
+  );
+}
+
+/* ───────── 镜 9 社区帖（真实帖子内容照录） ───────── */
+const POSTS = [
+  { a:"陈师傅", r:"川菜厨师长 · 成都", tag:"川菜", t:"川菜师傅带徒，最看重哪一点?", d:"带了六个徒弟，最后能上灶的只有两个。我发现不是刀工问题，也不是记不住味型，而是愿不愿意在下班后自己练。", like:34, cmt:1 },
+  { a:"扬州老张", r:"淮扬菜主厨 · 扬州", tag:"淮扬菜", t:"淮扬菜的刀工，练多久才算入门", d:"文思豆腐切成细丝不断，我练了两年。师傅说：先切萝卜，切一百斤再上豆腐。基本功骗不了人。", like:41, cmt:8 },
+  { a:"罗小川", r:"川菜学习者 · 成都", tag:"川菜", t:"蓝光鉴一脉的「开水白菜」，到底难在哪", d:"很多人以为是汤的问题，其实是火的问题。扫汤要用鸡茸肉茸，分三次下，每次都要把浮沫撇干净。", like:58, cmt:8 },
+];
+function CommunityWall() {
+  const { time, cur } = useSceneInfo();
+  if (cur.id !== "s09-community") return null;
+  const exit = clamp((time - 87.6) / 1.0);
+  return (
+    <div style={{ position:"absolute", right:"5%", top:"50%", transform:`translateY(-50%) translateX(${expoOut(exit) * 50}%)`, opacity:1 - exit, width:1120 }}>
+      {POSTS.map((p, i) => {
+        const t = expoOut(clamp((time - 80.0 - i * 0.3) / 0.7));
+        return (
+          <div key={p.a} style={{
+            background:PAPER, border:"1px solid rgba(26,23,20,.4)", borderRadius:5,
+            padding:"18px 26px", marginBottom:14, fontFamily:SERIF,
+            opacity:t, transform:`translateY(${(1 - t) * 26}px)`,
+          }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10, fontSize:15, color:"rgba(26,23,20,.6)" }}>
+              <span style={{
+                width:30, height:30, border:"1px solid rgba(26,23,20,.5)", borderRadius:3,
+                display:"inline-flex", alignItems:"center", justifyContent:"center",
+                fontSize:15, fontWeight:600, color:INK,
+              }}>{p.a[0]}</span>
+              <b style={{ color:INK, fontWeight:600 }}>{p.a}</b>
+              <span style={{ fontSize:13 }}>{p.r}</span>
+              <span style={{ marginLeft:"auto", fontSize:13, color:VERM, border:"1px solid rgba(176,58,46,.45)", borderRadius:3, padding:"1px 8px" }}>{p.tag}</span>
+            </div>
+            <div style={{ fontSize:19, fontWeight:600, color:INK, margin:"9px 0 6px" }}>{p.t}</div>
+            <div style={{ fontSize:14, color:"rgba(26,23,20,.62)", lineHeight:1.7 }}>
+              {p.d.slice(0, 42)}…
+            </div>
+            <div style={{ fontSize:13, color:"rgba(26,23,20,.45)", marginTop:8 }}>
+              ♥ {p.like} · 评论 {p.cmt}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ───────── 镜 10 范式虚影 ───────── */
+const VISIONS = [["木匠", -34], ["绣娘", 0], ["理发师", 34]];
+function VisionShadows() {
+  const { time, cur } = useSceneInfo();
+  if (cur.id !== "s10-vision") return null;
+  const t = clamp((time - 93.467) / 1.1);
+  return (
+    <div style={{ position:"absolute", inset:0 }}>
+      {VISIONS.map(([name, ang], i) => {
+        const rad = (ang - 90) * Math.PI / 180;
+        const R = 470;
+        const x = 50 + Math.cos(rad) * 30, y = 48 + Math.sin(rad) * 26;
+        const s = expoOut(clamp(t - i * 0.18));
+        return (
+          <div key={name} style={{
+            position:"absolute", left:`${x}%`, top:`${y}%`, transform:`translate(-50%,-50%) scale(${0.7 + s * 0.3})`,
+            opacity:s * 0.3, width:300,
+          }}>
+            <div style={{
+              background:"rgba(245,240,230,.9)", border:"1.5px dashed rgba(26,23,20,.5)", borderRadius:6,
+              padding:"26px 30px", fontFamily:SERIF, textAlign:"center",
+            }}>
+              <div style={{ fontSize:30, fontWeight:900, color:"rgba(26,23,20,.75)" }}>{name}</div>
+              <div style={{ fontSize:14, color:"rgba(26,23,20,.5)", marginTop:8, letterSpacing:2 }}>师承档案 · 职业匹配 · 口述简历</div>
+            </div>
+          </div>
+        );
+      })}
+      <div style={{
+        position:"absolute", left:"50%", bottom:"9%", transform:"translateX(-50%)",
+        fontFamily:SERIF, fontSize:24, fontWeight:600, color:INK, letterSpacing:6,
+        opacity:expoOut(clamp((time - 95.5) / 0.9)),
+      }}>
+        帮助每一种「手艺型」职业<span style={{ color:VERM }}>。</span>
+      </div>
+    </div>
+  );
+}
+
+/* ───────── 镜 11 谢幕 ───────── */
+function EndCard() {
+  const { time, cur } = useSceneInfo();
+  if (cur.id !== "s11-end") return null;
+  const t1 = clamp((time - 100.6) / 0.9);
+  const t2 = clamp((time - 101.7) / 0.9);
+  const t3 = clamp((time - 106.296) / 0.9);
+  return (
+    <div style={{ position:"absolute", left:"50%", top:"44%", transform:"translate(-50%,-50%)", textAlign:"center", fontFamily:SERIF }}>
+      <div style={{ fontSize:15, letterSpacing:8, color:"rgba(26,23,20,.5)", opacity:expoOut(t1) }}>
+        STAR CHEF · 数字师承谱
+      </div>
+      <div style={{ fontSize:120, fontWeight:900, color:INK, letterSpacing:10, lineHeight:1.25, opacity:expoOut(t1) }}>
+        星厨<span style={{ color:VERM }}>传承</span>
+      </div>
+      <div style={{ fontSize:24, color:"rgba(26,23,20,.65)", marginTop:18, letterSpacing:4, opacity:expoOut(t2) }}>
+        以师承为信用 · 用 TRAE 构建
+      </div>
+      <div style={{
+        fontSize:30, fontWeight:600, color:INK, marginTop:34, letterSpacing:8,
+        opacity:expoOut(t3), transform:`translateY(${(1 - expoOut(t3)) * 14}px)`,
+      }}>
+        世界很大<span style={{ color:VERM }}>，</span>放手去造<span style={{ color:VERM }}>。</span>
+      </div>
+    </div>
+  );
+}
+
+/* ───────── 主装配 ───────── */
+function TimeProbe() {
+  const { time, cur } = useSceneInfo();
+  if (!window.__recording || location.search.indexOf("rec=1") === -1) return null;  // 仅 rec=1 调试显示，不进渲染
+  return (
+    <div style={{ position:"absolute", right:14, top:12, fontFamily:"Consolas,monospace",
+      fontSize:15, color:"rgba(26,23,20,.55)", background:"rgba(245,240,230,.7)",
+      padding:"3px 10px", borderRadius:3, zIndex:50 }}>
+      t={time.toFixed(2)}s · {cur.id}
+    </div>
+  );
+}
+
+const App = () => (
+  <NarrationStage timeline={RAW} audioSrc="_narration/voiceover.mp3"
+    width={1920} height={1080} background={PAPER} controls={true}>
+    <div style={{ position:"absolute", inset:0, background:PAPER }} />
+    <CameraRig>
+      <HookTitles />
+      <HeroCard />
+      <LineagePanel />
+      <WaitBadge />
+      <SourceCard />
+      <BreakdownPanel />
+      <TypingBubble />
+      <CommunityWall />
+      <VisionShadows />
+      <EndCard />
+    </CameraRig>
+    <Atmosphere />
+    <Subtitles bottom={72} fontSize={31} color="#1a1a1a" haloColor="rgba(245,240,230,0.92)" />
+    <TimeProbe />
+  </NarrationStage>
+);
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

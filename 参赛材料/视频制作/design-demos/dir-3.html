@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>方向C · 一张谱，一群人</title>
+<style>
+  :root{
+    --board:#171512; --board2:#211d18; --paper:#F5F0E6; --ink:#1A1714;
+    --vermillion:#B03A2E; --moss:#5B6B4F; --gold:#C9A24A; --rule:#3a352c;
+    --tx:#E8E2D4; --tx-dim:#9a927f;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{width:1920px;height:1080px;background:var(--board);color:var(--tx);
+    font-family:"Noto Serif SC","Songti SC","SimSun",serif;overflow:hidden;position:relative}
+  .rail{position:absolute;left:0;top:0;bottom:0;width:430px;background:var(--board2);
+    border-right:1px solid var(--rule);padding:44px 38px;display:flex;flex-direction:column}
+  .num{font-family:Georgia,serif;font-size:20px;letter-spacing:.35em;color:var(--vermillion)}
+  h1{font-size:44px;font-weight:900;line-height:1.28;margin:14px 0 18px}
+  h1 em{font-style:normal;color:var(--vermillion)}
+  .pos{font-size:17px;line-height:1.75}
+  .ref{margin-top:22px;font-size:14px;color:var(--tx-dim);line-height:1.7}
+  .ref b{color:var(--tx);font-weight:600}
+  .motion{margin-top:auto;border-top:1px solid var(--rule);padding-top:20px}
+  .motion h2{font-size:13px;letter-spacing:.3em;color:var(--gold);margin-bottom:12px}
+  .motion li{list-style:none;font-size:14.5px;line-height:1.9;color:var(--tx-dim);padding-left:16px;position:relative}
+  .motion li::before{content:"";position:absolute;left:0;top:.85em;width:6px;height:1px;background:var(--vermillion)}
+  .motion li b{color:var(--tx);font-weight:600}
+  .form{margin-top:16px;font-size:13.5px;line-height:1.7;color:var(--moss)}
+  .form b{color:#8aa27a;font-weight:700}
+  .stage{position:absolute;left:430px;right:0;top:0;bottom:150px;display:flex;align-items:center;justify-content:center;gap:56px;padding:0 60px}
+  .kf{position:relative;background:#0e0c0a;border:1px solid var(--rule);flex:1;height:640px;overflow:hidden}
+  .kf .tag{position:absolute;left:0;top:0;z-index:5;background:var(--board);color:var(--gold);
+    font-size:12px;letter-spacing:.25em;padding:8px 16px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+  /* 关键帧1：谱页斜置巡览（真实截图 · rotateY -60° 列队） */
+  .tiltwrap{position:absolute;inset:0;perspective:1100px;background:
+    radial-gradient(ellipse 70% 60% at 50% 40%, #201c16 0%, #0e0c0a 100%)}
+  .tilt{position:absolute;width:1150px;left:50%;top:52%;transform:translate(-50%,-50%) rotateY(-60deg) rotateX(2deg) scale(1.02);
+    box-shadow:-40px 60px 90px rgba(0,0,0,.6);border:1px solid rgba(245,240,230,.12)}
+  .tilt img{width:100%;display:block;filter:saturate(.9) brightness(.96)}
+  .zhu{position:absolute;z-index:6;right:7%;top:9%;writing-mode:vertical-rl;color:var(--paper);
+    font-size:20px;letter-spacing:.5em;border-right:2px solid var(--vermillion);padding-right:12px;opacity:.92}
+  /* 关键帧2：章扉叶面（宋刻本语法：版框/界栏/鱼尾/朱批） */
+  .leaf{position:absolute;inset:0;background:#EDE0BC;display:flex;align-items:center;justify-content:center}
+  .ban{position:relative;height:78%;aspect-ratio:.72;background:#EDE0BC;
+    border:3px solid #2b241a;outline:1px solid #2b241a;outline-offset:-7px;
+    display:flex;justify-content:center;padding:26px 0}
+  .col{writing-mode:vertical-rl;font-size:30px;color:#2b241a;letter-spacing:.35em;
+    border-left:1px solid #2b241a;padding:10px 14px;height:100%}
+  .col.zhupi{font-size:15px;color:var(--vermillion);letter-spacing:.3em}
+  .fish{position:absolute;left:50%;top:-3px;transform:translateX(-50%);width:0;height:0;
+    border-left:9px solid transparent;border-right:9px solid transparent;border-top:14px solid #2b241a}
+  .fish.dn{top:auto;bottom:-3px;transform:translateX(-50%) rotate(180deg)}
+  .zhuyin{position:absolute;left:33%;top:62%;transform:translateX(-50%);width:64px;height:64px;
+    background:var(--vermillion);color:var(--paper);display:flex;align-items:center;justify-content:center;
+    font-size:30px;border-radius:6px;box-shadow:0 2px 10px rgba(43,36,26,.25)}
+  .palette{position:absolute;left:430px;right:0;bottom:0;height:150px;border-top:1px solid var(--rule);
+    display:flex;align-items:center;padding:0 60px;gap:44px}
+  .sw{width:74px;height:44px;border:1px solid var(--rule);position:relative}
+  .sw span{position:absolute;left:0;top:50px;font-size:11.5px;color:var(--tx-dim);letter-spacing:.12em;white-space:nowrap}
+  .plabel{font-size:12px;letter-spacing:.3em;color:var(--gold);margin-right:6px}
+</style>
+</head>
+<body>
+  <aside class="rail">
+    <div class="num">方向 C · DIR 3</div>
+    <h1>一张谱，<em>一群人</em>。</h1>
+    <p class="pos">解说先行、画面作答的纪录片语法：长谱斜置巡览→急刹在史正良→朱批点「待补」→1,238 张卡瀑布墙收场。群像史诗——「上千万厨师」只有在群像里才成立。</p>
+    <p class="ref">参照语法：<b>《舌尖上的中国》</b>（解说节奏与群像）<br>实测参数源：steep-tilt-glide / page-waterfall-wall；章扉借 <b>宋刻本叶面</b>（版框·鱼尾·朱批）</p>
+    <ul class="motion">
+      <h2>运动语言</h2>
+      <li><b>镜头动页面静</b>：谱页斜置 −60° 列队滑过，看体量与质感</li>
+      <li>急刹：一条 expo 曲线 50f，blur 随帧间位移差分，停稳才点朱批</li>
+      <li>章节切换走"叶面"语法：每章一整叶 3 秒，竖排+鱼尾+朱圈</li>
+      <li>收场瀑布墙 3 列 loop 周期差 ≥25%，「宁缺毋滥」定格</li>
+    </ul>
+    <p class="form"><b>form 来自内容：</b>师承谱本来就是数字族谱——刻本章法是题材里长出来的，不是贴上去的皮。</p>
+  </aside>
+  <main class="stage">
+    <figure class="kf">
+      <span class="tag">关键帧 ① · 谱页斜置巡览（真实截图 · −60° 列队）</span>
+      <div class="tiltwrap"><div class="tilt"><img src="../素材/截图/03-lineage-shizhengliang.png" alt=""></div></div>
+      <div class="zhu">师承 · 即信用</div>
+    </figure>
+    <figure class="kf">
+      <span class="tag">关键帧 ② · 章扉叶面（宋刻本语法 · 真实渲染）</span>
+      <div class="leaf"><div class="ban"><div class="fish"></div><div class="fish dn"></div>
+        <div class="col zhupi">朱批 · 宁缺毋滥</div>
+        <div class="col">第贰章 · 师承谱</div>
+        <div class="zhuyin">谱</div>
+      </div></div>
+    </figure>
+  </main>
+  <footer class="palette">
+    <span class="plabel">色板 · 全部取自产品自身 tokens</span>
+    <div class="sw" style="background:#F5F0E6"><span>纸 F5F0E6</span></div>
+    <div class="sw" style="background:#1A1714"><span>墨 1A1714</span></div>
+    <div class="sw" style="background:#B03A2E"><span>朱 B03A2E</span></div>
+    <div class="sw" style="background:#5B6B4F"><span>苔 5B6B4F</span></div>
+    <div class="sw" style="background:#C9A24A"><span>金 C9A24A</span></div>
+  </footer>
+</body>
+</html>
