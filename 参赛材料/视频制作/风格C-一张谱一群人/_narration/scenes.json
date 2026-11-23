@@ -1,0 +1,168 @@
+[
+ {
+  "id": "s01-hook",
+  "raw": "在餐饮行业，[[cue:who]]「你是谁带的」，往往比「你在哪里干过」更重要。",
+  "text": "在餐饮行业，「你是谁带的」，往往比「你在哪里干过」更重要。",
+  "cues": [
+   {
+    "id": "who",
+    "charOffset": 6
+   }
+  ],
+  "audio": "audio/s01-hook.mp3",
+  "duration": 5.712,
+  "words": []
+ },
+ {
+  "id": "s02-crowd",
+  "raw": "两千万厨师，[[cue:roads]]每人一条来路。来路散落在后厨、师傅的记忆、公开报道里，[[cue:unwritten]]从来没有被连成一张谱。",
+  "text": "两千万厨师，每人一条来路。来路散落在后厨、师傅的记忆、公开报道里，从来没有被连成一张谱。",
+  "cues": [
+   {
+    "id": "roads",
+    "charOffset": 6
+   },
+   {
+    "id": "unwritten",
+    "charOffset": 33
+   }
+  ],
+  "audio": "audio/s02-crowd.mp3",
+  "duration": 10.536,
+  "words": []
+ },
+ {
+  "id": "s03-scroll",
+  "raw": "星厨传承，把来路连成数字师承谱。[[cue:archive]]一千二百三十八位真实厨师，二百六十二条师承可溯，先立真实。",
+  "text": "星厨传承，把来路连成数字师承谱。一千二百三十八位真实厨师，二百六十二条师承可溯，先立真实。",
+  "cues": [
+   {
+    "id": "archive",
+    "charOffset": 16
+   }
+  ],
+  "audio": "audio/s03-scroll.mp3",
+  "duration": 11.184,
+  "words": []
+ },
+ {
+  "id": "s04-lineage",
+  "raw": "翻开川菜一卷：[[cue:shi]]第三代史正良，上承魏兴国，门下十八人，[[cue:chuhao]]人人有出处。",
+  "text": "翻开川菜一卷：第三代史正良，上承魏兴国，门下十八人，人人有出处。",
+  "cues": [
+   {
+    "id": "shi",
+    "charOffset": 7
+   },
+   {
+    "id": "chuhao",
+    "charOffset": 26
+   }
+  ],
+  "audio": "audio/s04-lineage.mp3",
+  "duration": 7.656,
+  "words": []
+ },
+ {
+  "id": "s05-honest",
+  "raw": "谱上没核实的，诚实标注「待补」。[[cue:zhu]]宁可谱瘦，不让谱说谎。",
+  "text": "谱上没核实的，诚实标注「待补」。宁可谱瘦，不让谱说谎。",
+  "cues": [
+   {
+    "id": "zhu",
+    "charOffset": 16
+   }
+  ],
+  "audio": "audio/s05-honest.mp3",
+  "duration": 6.48,
+  "words": []
+ },
+ {
+  "id": "s06-source",
+  "raw": "每条师承，都附来源跋注。[[cue:verify]]评委、雇主、学徒，都能亲自验证。",
+  "text": "每条师承，都附来源跋注。评委、雇主、学徒，都能亲自验证。",
+  "cues": [
+   {
+    "id": "verify",
+    "charOffset": 12
+   }
+  ],
+  "audio": "audio/s06-source.mp3",
+  "duration": 7.392,
+  "words": []
+ },
+ {
+  "id": "s07-jobs",
+  "raw": "谱，也能接活。招聘匹配按菜系、师门、师承距离、地域、薪资五个维度打分。[[cue:score]]七十五分，拆得开——AI 只解释，不玄学。",
+  "text": "谱，也能接活。招聘匹配按菜系、师门、师承距离、地域、薪资五个维度打分。七十五分，拆得开——AI 只解释，不玄学。",
+  "cues": [
+   {
+    "id": "score",
+    "charOffset": 35
+   }
+  ],
+  "audio": "audio/s07-jobs.mp3",
+  "duration": 14.16,
+  "words": []
+ },
+ {
+  "id": "s08-ai",
+  "raw": "不会写字的老师傅，说一段大白话。[[cue:ai]]AI 严格按口述整理成规范档案，绝不编造。[[cue:copy]]一键复制，粘到微信，就能投出去。",
+  "text": "不会写字的老师傅，说一段大白话。AI 严格按口述整理成规范档案，绝不编造。一键复制，粘到微信，就能投出去。",
+  "cues": [
+   {
+    "id": "ai",
+    "charOffset": 16
+   },
+   {
+    "id": "copy",
+    "charOffset": 37
+   }
+  ],
+  "audio": "audio/s08-ai.mp3",
+  "duration": 12.72,
+  "words": []
+ },
+ {
+  "id": "s09-community",
+  "raw": "一张谱，连着一群人的声气。[[cue:circle]]同行切磋、招徒拜师，按菜系成圈。帖子，就存在你的浏览器里。",
+  "text": "一张谱，连着一群人的声气。同行切磋、招徒拜师，按菜系成圈。帖子，就存在你的浏览器里。",
+  "cues": [
+   {
+    "id": "circle",
+    "charOffset": 13
+   }
+  ],
+  "audio": "audio/s09-community.mp3",
+  "duration": 10.608,
+  "words": []
+ },
+ {
+  "id": "s10-vision",
+  "raw": "让不擅表达的劳动者被看见。[[cue:trades]]木匠、绣娘、理发师——每一种「手艺型」职业，都值得一册自己的谱。",
+  "text": "让不擅表达的劳动者被看见。木匠、绣娘、理发师——每一种「手艺型」职业，都值得一册自己的谱。",
+  "cues": [
+   {
+    "id": "trades",
+    "charOffset": 13
+   }
+  ],
+  "audio": "audio/s10-vision.mp3",
+  "duration": 9.96,
+  "words": []
+ },
+ {
+  "id": "s11-end",
+  "raw": "星厨传承，以师承为信用。[[cue:book]]一张谱，一群人。",
+  "text": "星厨传承，以师承为信用。一张谱，一群人。",
+  "cues": [
+   {
+    "id": "book",
+    "charOffset": 12
+   }
+  ],
+  "audio": "audio/s11-end.mp3",
+  "duration": 5.496,
+  "words": []
+ }
+]
