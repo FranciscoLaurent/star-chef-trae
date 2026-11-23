@@ -52,7 +52,7 @@ npm run lint       # oxlint
 
 ## 参赛冲刺清单
 
-- [ ] **GitHub Pages 部署**：仓库已推送成功（`master`），代码与历史完整。此前判断的「账号被风控」已证伪——未认证访问全部 200，账号健康。当前现状：仓库已设为 **private**（降低真人照片数据的公开暴露风险），Pages 从私有仓库发布需 GitHub Pro；工作流 `Configure Pages` 步骤需先在仓库设置里一次性手动开启 Pages（`enablement: true` 无法用工作流 token 创建站点）。待决定公开策略后再启用。
+- [x] **GitHub Pages 部署**：https://franciscolaurent.github.io/star-chef-trae/ （仓库已转 public，全量 853 张头像版在线；此前「账号被风控」已证伪——是本地 remote URL 拼写错误，修正后推送一次成功）
 - [x] **演示视频成片**：`参赛材料/视频制作/星厨传承-参赛演示片.mp4`（1 分 47 秒 · 解说+混音 · 纯产品介绍 · 全套制作源文件同目录；另备风格 B/C 两个候选版本）
 - [x] 《项目计划书》赛道三版草稿：`参赛材料/项目计划书_草稿.md`（`[待团队填写]` 项需补团队信息）
 - [ ] 整理 TRAE 对话式开发过程证据
