@@ -6,8 +6,12 @@ import ChefDetailPage from './pages/ChefDetailPage';
 import JobsPage from './pages/JobsPage';
 import AssistantPage from './pages/AssistantPage';
 import CommunityPage from './pages/CommunityPage';
+import { useData } from './lib/useData';
 
 export default function App() {
+  // 页脚统计与全站同一数据源（useData 全局缓存），不再硬编码数字
+  // meta.total 本身即真实档案数（不含 275 条待补占位），直接使用
+  const { data } = useData();
   return (
     <>
       <NavBar />
@@ -50,8 +54,8 @@ export default function App() {
           <div>
             <h6>数据说明</h6>
             <ul>
-              <li>1,238 位真实厨师档案</li>
-              <li>43 个菜系 · 8 个门第</li>
+              <li>{data ? `${data.meta.total.toLocaleString()} 位真实厨师档案` : '厨师档案整理中'}</li>
+              {data && <li>{data.meta.cuisines} 个菜系 · {data.meta.schools} 个门第</li>}
               <li>师承关系来源于公开资料</li>
               <li>岗位数据为演示数据</li>
             </ul>

@@ -128,10 +128,10 @@ export default function HomePage() {
             desc="按菜系、地域、师门形成圈子，同行切磋、师傅招徒、学徒拜师。" />
           <FeatureRow ix="04 / 06" to="/assistant" name={<span>AI <em>求职助手</em></span>} meta="AI 能力"
             desc="厨师用大白话描述经历，AI 自动生成规范求职档案，降低表达门槛。" />
-          <FeatureRow ix="05 / 06" to="/jobs" name={<span>师门<em>信用认证</em></span>} meta="信任机制"
-            desc="师傅认证徒弟、同行交叉背书，AI 校验异常师承声明。" />
+          <FeatureRow ix="05 / 06" to="/lineage" name={<span>师承<em>信用档案</em></span>} meta="信任机制"
+            desc="师承关系取自公开可溯源资料，无法核实的明确标出「待核实」，让「谁带的」有据可查。" />
           <FeatureRow ix="06 / 06" to="/jobs" name={<span>雇主<em>人才库</em></span>} meta="B 端服务"
-            desc="酒店与餐厅可按门第派系精准筛选，直接触达可信赖的厨师网络。" />
+            desc="雇主按菜系、地域、年限筛选真实档案，按匹配度排序并查看匹配理由。" />
         </ol>
       </section>
 

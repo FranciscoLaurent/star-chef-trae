@@ -18,7 +18,19 @@ export function setApiKey(k: string) {
   } catch { /* ignore */ }
 }
 export function getMode(): AiMode {
-  try { return (localStorage.getItem(MODE_STORAGE) as AiMode) || 'proxy'; } catch { return 'proxy'; }
+  try {
+    const saved = (localStorage.getItem(MODE_STORAGE) as AiMode) || 'proxy';
+    // 系统自行判断：proxy 仅在本地 dev server 存在；线上静态托管无 /api 代理，
+    // 自动降级为直连，避免用户配了 Key 却始终请求失败还要自己排查
+    if (saved === 'proxy' && !isLocalDev()) return 'direct';
+    return saved;
+  } catch { return isLocalDev() ? 'proxy' : 'direct'; }
+}
+
+/** 是否运行在本地 dev server（proxy 依赖 vite 的 /api 转发，仅此处可用） */
+export function isLocalDev(): boolean {
+  // 编译期判定：vite --host 局域网真机调试仍是 dev（有 /api）；静态产物即使开在 localhost 也无 /api
+  return import.meta.env.DEV;
 }
 export function setMode(m: AiMode) {
   try { localStorage.setItem(MODE_STORAGE, m); } catch { /* ignore */ }

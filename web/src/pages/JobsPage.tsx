@@ -27,6 +27,14 @@ export default function JobsPage() {
   const [aiBusy, setAiBusy] = useState(false);
   const [aiDemo, setAiDemo] = useState(false);
   const [notice, setNotice] = useState('');
+  const noticeTimer = useRef<number | null>(null);
+  useEffect(() => () => { if (noticeTimer.current) window.clearTimeout(noticeTimer.current); }, []);
+  // 反馈统一自动消退（2.6s），与 AI 求职助手页 toast 一致
+  const flashNotice = (msg: string) => {
+    setNotice(msg);
+    if (noticeTimer.current) window.clearTimeout(noticeTimer.current);
+    noticeTimer.current = window.setTimeout(() => setNotice(''), 2600);
+  };
   const detailRef = useRef<HTMLDivElement>(null);
   usePageReveal();
 
@@ -425,7 +433,7 @@ export default function JobsPage() {
                     form.city && `期望城市：${form.city}`,
                   ].filter(Boolean).join('\n');
                   const ok = await copyTextToClipboard(text);
-                  setNotice(ok ? '已复制求职档案到剪贴板，可直接粘贴投递' : '复制失败，请手动选择文本复制');
+                  flashNotice(ok ? '已复制求职档案到剪贴板，可直接粘贴投递' : '复制失败，请手动选择文本复制');
                 }}>复制求职档案</button>
                 {notice && <div className="jd-notice">{notice}</div>}
               </div>
@@ -495,7 +503,7 @@ export default function JobsPage() {
                     c.bio,
                   ].filter(Boolean).join('\n');
                   const ok = await copyTextToClipboard(text);
-                  setNotice(ok ? '已复制厨师档案到剪贴板，可直接粘贴沟通' : '复制失败，请手动选择文本复制');
+                  flashNotice(ok ? '已复制厨师档案到剪贴板，可直接粘贴沟通' : '复制失败，请手动选择文本复制');
                 }}>复制厨师档案</button>
                 {notice && <div className="jd-notice">{notice}</div>}
               </div>

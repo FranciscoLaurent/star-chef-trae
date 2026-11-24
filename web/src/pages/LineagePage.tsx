@@ -303,7 +303,10 @@ export default function LineagePage() {
                     </div>
                   ))}
                   {isPending && !pendingExpanded && g.chefs.length > PENDING_PREVIEW && (
-                    <button className="ped-more" onClick={() => setPendingExpandKey(pendingScope)}>展开全部</button>
+                    <button className="ped-more" onClick={() => setPendingExpandKey(pendingScope)}>展开全部 {g.chefs.length} 人</button>
+                  )}
+                  {isPending && pendingExpanded && g.chefs.length > PENDING_PREVIEW && !pendingSelectedHidden && (
+                    <button className="ped-more" onClick={() => setPendingExpandKey(null)}>收起</button>
                   )}
                 </div>
               </div>

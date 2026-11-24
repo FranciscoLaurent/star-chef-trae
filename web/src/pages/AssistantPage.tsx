@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  demoExtract, extractResume, getApiKey, getMode, setApiKey, setMode,
+  demoExtract, extractResume, getApiKey, getMode, setApiKey, setMode, isLocalDev,
   type AiMode, type ResumeProfile,
 } from '../lib/ai';
 import { copyTextToClipboard } from '../lib/jobs';
@@ -111,7 +111,9 @@ export default function AssistantPage() {
       const msg = String(e?.message || e);
       setErr(
         msg.includes('Failed to fetch') || msg.includes('NetworkError')
-          ? `请求失败：${msg}。若为跨域问题，请通过 dev server（proxy 模式）访问；也可在设置里切换为「浏览器直连」。`
+          ? (isLocalDev()
+              ? `请求失败：${msg}。若为跨域问题，可在设置里切换为「浏览器直连」。`
+              : `请求失败：${msg}。请检查网络后重试，或稍后再试。`)
           : `调用失败：${msg}`
       );
       setProfile(demoExtract(source));
@@ -124,6 +126,8 @@ export default function AssistantPage() {
 
   const startQuickDemo = async () => {
     if (quick !== 'idle' || busy) return;
+    // 防误触丢稿：已有口述内容时先确认，不悄悄覆盖
+    if (textRef.current.trim() && !window.confirm('一键演示会替换当前已输入的内容，确定继续吗？')) return;
     const keys = Object.keys(EXAMPLES);
     const chosen = EXAMPLES[keys[Math.floor(Math.random() * keys.length)]];
     setQuick('typing');
@@ -224,11 +228,22 @@ export default function AssistantPage() {
   };
 
   const saveKey = () => {
+    // 线上无 dev server 代理时，proxy 选项不可保存
+    const effective: AiMode = mode === 'proxy' && !isLocalDev() ? 'direct' : mode;
     setApiKey(key.trim());
-    setMode(mode);
+    setMode(effective);
+    setModeState(effective);
     setShowSettings(false);
     setErr('');
   };
+
+  // 设置面板：Escape 可关闭（组合态除外——输入法取消候选词的 Esc 不算）
+  useEffect(() => {
+    if (!showSettings) return;
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.isComposing) setShowSettings(false); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [showSettings]);
 
   const edit = (k: 'bio' | 'awards' | 'intent', v: string) => {
     setProfile(p => {
@@ -282,7 +297,12 @@ export default function AssistantPage() {
           <div className="asst-examples">
             <span className="hint-line">示例</span>
             {Object.entries(EXAMPLES).map(([k, ex]) => (
-              <button key={k} className="ex-btn" onClick={() => { setText(ex.text); textRef.current = ex.text; }}>
+              <button key={k} className="ex-btn" onClick={() => {
+                // 防误触丢稿：已有内容且不同于示例时先确认
+                const cur = textRef.current.trim();
+                if (cur && cur !== ex.text && !window.confirm('示例会替换当前已输入的内容，确定吗？')) return;
+                setText(ex.text); textRef.current = ex.text;
+              }}>
                 {ex.label}
               </button>
             ))}
@@ -468,12 +488,15 @@ export default function AssistantPage() {
             </div>
             <div className="ai-sp-body">
               <div className="ai-mode-row">
-                <button className={`ai-mode-btn ${mode === 'proxy' ? 'active' : ''}`} onClick={() => setModeState('proxy')}>
-                  <div className="ai-mode-name">经 dev server 代理（推荐）</div>
+                <button className={`ai-mode-btn ${mode === 'proxy' ? 'active' : ''}`}
+                  onClick={() => setModeState('proxy')}
+                  disabled={!isLocalDev()}
+                  title={isLocalDev() ? '' : '仅本地开发环境可用；线上已自动使用浏览器直连'}>
+                  <div className="ai-mode-name">{isLocalDev() ? '经 dev server 代理（推荐）' : '经 dev server 代理（仅本地开发可用）'}</div>
                   <div className="ai-mode-desc">/api/deepseek → api.deepseek.com，规避浏览器 CORS</div>
                 </button>
                 <button className={`ai-mode-btn ${mode === 'direct' ? 'active' : ''}`} onClick={() => setModeState('direct')}>
-                  <div className="ai-mode-name">浏览器直连</div>
+                  <div className="ai-mode-name">浏览器直连{!isLocalDev() ? '（推荐）' : ''}</div>
                   <div className="ai-mode-desc">直接请求 api.deepseek.com，需要接口允许跨域</div>
                 </button>
               </div>

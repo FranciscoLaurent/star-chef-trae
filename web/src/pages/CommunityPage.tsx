@@ -14,7 +14,17 @@ export default function CommunityPage() {
   const [tab, setTab] = useState('全部');
   const [composing, setComposing] = useState(false);
   const [detail, setDetail] = useState<Post | null>(null);
+  // 评论草稿存在页面级：临时收起详情（Esc/返回）不丢正在写的评论，重开仍在
+  const [commentDraft, setCommentDraft] = useState({ author: '', body: '' });
   usePageReveal();
+
+  // 详情层支持 Escape 收起；正在用输入法打字（组合态）时 Esc 属于取消候选词，不视为关闭
+  useEffect(() => {
+    if (!detail) return;
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.isComposing) setDetail(null); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [detail]);
 
   useEffect(() => {
     setPosts(loadPosts());
@@ -100,10 +110,10 @@ export default function CommunityPage() {
             <div className="post-foot">
               <span>{relativeTime(p.createdAt)}</span>
               <span style={{ display: 'flex', gap: 14 }}>
-                <span onClick={e => toggleLike(p.id, e)} style={{ cursor: 'pointer', color: liked.includes(p.id) ? 'var(--vermillion)' : undefined }}>
+                <span title="赞同 / 取消赞同" onClick={e => toggleLike(p.id, e)} style={{ cursor: 'pointer', color: liked.includes(p.id) ? 'var(--vermillion)' : undefined }}>
                   ♥ {p.likes}
                 </span>
-                <span>💬 {p.comments.length}</span>
+                <span title="评论数">💬 {p.comments.length}</span>
               </span>
             </div>
           </article>
@@ -113,7 +123,7 @@ export default function CommunityPage() {
         )}
       </div>
 
-      <button className="comm-fab" onClick={() => setComposing(true)} aria-label="发帖">＋</button>
+      <button className="comm-fab" onClick={() => setComposing(true)} aria-label="发帖" title="发帖">＋</button>
 
       {composing && <ComposeModal onCancel={() => setComposing(false)} onSubmit={publish} />}
 
@@ -142,7 +152,7 @@ export default function CommunityPage() {
               <span className="hint-line">评论 {detail.comments.length} 条</span>
             </div>
 
-            <CommentList post={detail} onAdd={addComment} />
+            <CommentList post={detail} onAdd={addComment} draft={commentDraft} onDraft={setCommentDraft} />
           </div>
         </div>
       )}
@@ -150,10 +160,12 @@ export default function CommunityPage() {
   );
 }
 
-function CommentList({ post, onAdd }: { post: Post; onAdd: (postId: string, body: string, author: string) => void }) {
-  const [author, setAuthor] = useState('');
-  const [body, setBody] = useState('');
-
+function CommentList({ post, onAdd, draft, onDraft }: {
+  post: Post;
+  onAdd: (postId: string, body: string, author: string) => void;
+  draft: { author: string; body: string };
+  onDraft: (d: { author: string; body: string }) => void;
+}) {
   return (
     <div className="detail-comments">
       <h6 className="hint-line" style={{ marginBottom: 14 }}>评论</h6>
@@ -171,13 +183,18 @@ function CommentList({ post, onAdd }: { post: Post; onAdd: (postId: string, body
       ))}
 
       <div className="comment-form">
-        <input placeholder="你的名字" value={author} onChange={e => setAuthor(e.target.value)} style={{ maxWidth: 160 }} />
-        <input placeholder="说点什么…" value={body} onChange={e => setBody(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && body.trim()) { onAdd(post.id, body.trim(), author.trim() || '匿名同行'); setBody(''); } }} />
+        <input placeholder="你的名字" value={draft.author} onChange={e => onDraft({ ...draft, author: e.target.value })} style={{ maxWidth: 160 }} />
+        <input placeholder="说点什么…" value={draft.body} onChange={e => onDraft({ ...draft, body: e.target.value })}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !e.nativeEvent.isComposing && draft.body.trim()) {
+              onAdd(post.id, draft.body.trim(), draft.author.trim() || '匿名同行');
+              onDraft({ author: draft.author, body: '' });
+            }
+          }} />
         <button className="btn-primary" onClick={() => {
-          if (!body.trim()) return;
-          onAdd(post.id, body.trim(), author.trim() || '匿名同行');
-          setBody('');
+          if (!draft.body.trim()) return;
+          onAdd(post.id, draft.body.trim(), draft.author.trim() || '匿名同行');
+          onDraft({ author: draft.author, body: '' });
         }}>发送</button>
       </div>
     </div>
@@ -196,16 +213,28 @@ function ComposeModal({ onCancel, onSubmit }: {
   const [city, setCity] = useState('');
 
   const canSubmit = title.trim() && body.trim();
+  // 防误触丢稿：已写内容时，点弹窗外或按 Esc 都不直接丢弃，需明确确认
+  const hasDraft = !!(title.trim() || body.trim());
+  const guardClose = (close: () => void) => {
+    if (!hasDraft || window.confirm('帖子还没发布，关闭后内容会丢失，确定吗？')) close();
+  };
+  useEffect(() => {
+    // 组合态（输入法取消候选词）的 Esc 不触发关闭
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.isComposing) guardClose(onCancel); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasDraft, onCancel]);
 
   return (
-    <div className="comm-modal" onClick={e => { if (e.target === e.currentTarget) onCancel(); }}>
+    <div className="comm-modal" onClick={e => { if (e.target === e.currentTarget) guardClose(onCancel); }}>
       <div className="cm-card">
         <div className="cm-head">
           <div>
             <div style={{ fontFamily: 'var(--serif)', fontSize: 22 }}>发一条帖子</div>
             <div className="hint-line" style={{ marginTop: 6 }}>保存在本机浏览器 · 不会上传</div>
           </div>
-          <button className="cm-cancel" onClick={onCancel}>×</button>
+          <button className="cm-cancel" onClick={() => guardClose(onCancel)}>×</button>
         </div>
 
         <div className="cm-field">

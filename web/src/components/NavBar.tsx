@@ -23,7 +23,8 @@ export default function NavBar() {
         e.preventDefault();
         setPaletteOpen(true);
       }
-      if (e.key === 'Escape') { setPaletteOpen(false); setMenuOpen(false); }
+      // 组合态（输入法取消候选词）的 Esc 不关闭面板/菜单
+      if (e.key === 'Escape' && !e.isComposing) { setPaletteOpen(false); setMenuOpen(false); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
