@@ -4,7 +4,7 @@ import {
   type AiMode, type ResumeProfile,
 } from '../lib/ai';
 import { copyTextToClipboard } from '../lib/jobs';
-import { usePageReveal } from '../lib/motion';
+import { usePageReveal, useExitVisible } from '../lib/motion';
 
 const EXAMPLES: Record<string, { label: string; text: string }> = {
   chuan: {
@@ -48,6 +48,8 @@ export default function AssistantPage() {
   const [isDemo, setIsDemo] = useState(false);
   const [err, setErr] = useState('');
   const [notice, setNotice] = useState('');
+  // 退场动画期间仍要渲染最后一条提示文本
+  const [lastNotice, setLastNotice] = useState('');
   const [recording, setRecording] = useState(false);
   const [voiceHint, setVoiceHint] = useState('');
   const [quick, setQuick] = useState<'idle' | 'typing' | 'generating'>('idle');
@@ -73,9 +75,14 @@ export default function AssistantPage() {
 
   const flash = (msg: string) => {
     setNotice(msg);
+    setLastNotice(msg);
     if (noticeTimer.current) window.clearTimeout(noticeTimer.current);
     noticeTimer.current = window.setTimeout(() => setNotice(''), 2600);
   };
+
+  // 弹层/提示退场：关闭后保留挂载播 200ms 退场动画
+  const settingsView = useExitVisible(showSettings);
+  const toastView = useExitVisible(!!notice);
 
   const run = async (input?: string) => {
     const source = (input ?? textRef.current).trim();
@@ -474,10 +481,10 @@ export default function AssistantPage() {
         </div>
       </div>
 
-      {notice && <div className="asst-toast">{notice}</div>}
+      {toastView.visible && <div className={`asst-toast ${toastView.leaving ? 'is-leaving' : ''}`}>{lastNotice}</div>}
 
-      {showSettings && (
-        <div className="ai-settings-panel" onClick={e => { if (e.target === e.currentTarget) setShowSettings(false); }}>
+      {settingsView.visible && (
+        <div className={`ai-settings-panel ${settingsView.leaving ? 'is-leaving' : ''}`} onClick={e => { if (e.target === e.currentTarget) setShowSettings(false); }}>
           <div className="ai-sp-card">
             <div className="ai-sp-head">
               <div>

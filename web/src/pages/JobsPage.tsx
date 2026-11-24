@@ -8,7 +8,7 @@ import {
 } from '../lib/jobs';
 import { getApiKey, getMode, callDeepSeek, explainPrompt, demoExplain } from '../lib/ai';
 import type { Chef } from '../lib/types';
-import { usePageReveal, useStaggerIn, swapFade } from '../lib/motion';
+import { usePageReveal, useStaggerIn, swapFade, tweenNumber, useExitVisible } from '../lib/motion';
 
 type Role = 'chef' | 'employer';
 
@@ -27,14 +27,18 @@ export default function JobsPage() {
   const [aiBusy, setAiBusy] = useState(false);
   const [aiDemo, setAiDemo] = useState(false);
   const [notice, setNotice] = useState('');
+  // 退场动画期间仍要渲染最后一条提示文本
+  const [lastNotice, setLastNotice] = useState('');
   const noticeTimer = useRef<number | null>(null);
   useEffect(() => () => { if (noticeTimer.current) window.clearTimeout(noticeTimer.current); }, []);
   // 反馈统一自动消退（2.6s），与 AI 求职助手页 toast 一致
   const flashNotice = (msg: string) => {
     setNotice(msg);
+    setLastNotice(msg);
     if (noticeTimer.current) window.clearTimeout(noticeTimer.current);
     noticeTimer.current = window.setTimeout(() => setNotice(''), 2600);
   };
+  const noticeView = useExitVisible(!!notice);
   const detailRef = useRef<HTMLDivElement>(null);
   usePageReveal();
 
@@ -435,7 +439,7 @@ export default function JobsPage() {
                   const ok = await copyTextToClipboard(text);
                   flashNotice(ok ? '已复制求职档案到剪贴板，可直接粘贴投递' : '复制失败，请手动选择文本复制');
                 }}>复制求职档案</button>
-                {notice && <div className="jd-notice">{notice}</div>}
+                {noticeView.visible && <div className={`jd-notice ${noticeView.leaving ? 'is-leaving' : ''}`}>{lastNotice}</div>}
               </div>
             </>
           )}
@@ -505,7 +509,7 @@ export default function JobsPage() {
                   const ok = await copyTextToClipboard(text);
                   flashNotice(ok ? '已复制厨师档案到剪贴板，可直接粘贴沟通' : '复制失败，请手动选择文本复制');
                 }}>复制厨师档案</button>
-                {notice && <div className="jd-notice">{notice}</div>}
+                {noticeView.visible && <div className={`jd-notice ${noticeView.leaving ? 'is-leaving' : ''}`}>{lastNotice}</div>}
               </div>
             </>
           )}
@@ -517,10 +521,16 @@ export default function JobsPage() {
 
 function MatchCard({ result }: { result: MatchResult }) {
   const [animate, setAnimate] = useState(false);
+  const numRef = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     setAnimate(false);
     const id = requestAnimationFrame(() => setAnimate(true));
     return () => cancelAnimationFrame(id);
+  }, [result.total]);
+  // 总分数值从上次值平滑滚到新值（换岗位/改条件时数字不跳变）
+  useEffect(() => {
+    const tw = tweenNumber(numRef.current, result.total);
+    return () => { tw?.kill(); };
   }, [result.total]);
 
   const top = topDim(result);
@@ -528,7 +538,7 @@ function MatchCard({ result }: { result: MatchResult }) {
   return (
     <div className="match-bd">
       <div className="total">
-        <div className="num">{result.total}<small>/100</small></div>
+        <div className="num"><span ref={numRef}>{result.total}</span><small>/100</small></div>
         <div><div className="lbl">综合匹配度</div></div>
         <div className="verdict">— {result.verdict}</div>
       </div>

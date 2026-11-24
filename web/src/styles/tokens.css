@@ -30,8 +30,14 @@
   --radius:   6px;
   --shadow:   0 1px 0 var(--rule), 0 4px 24px -8px rgba(18,16,14,.12);
 
-  /* 动效 */
+  /* 动效 —— 全站统一语言：
+     曲线只有两条：out = 入场/展开（快出缓停）；io = 移动/收起（对称）
+     时长三档：fast = 微反馈（悬停/按下）；base = 开关切换；slow = 大区域入场 */
   --ease-out: cubic-bezier(.22,.61,.36,1);
+  --ease-io:  cubic-bezier(.6,0,.2,1);
+  --mo-fast:  .18s;
+  --mo-base:  .3s;
+  --mo-slow:  .5s;
 }
 
 /* ============ Reset ============ */

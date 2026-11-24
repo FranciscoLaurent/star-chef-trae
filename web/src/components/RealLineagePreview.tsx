@@ -1,4 +1,4 @@
-// 真实师承谱预览 —— 自动选取徒弟最多且可看（有照片）的真实师傅，
+﻿// 真实师承谱预览 —— 自动选取徒弟最多且可看（有照片）的真实师傅，
 // 展示一条全真实档案的师承链。数据口径：全部来自 chefs.json（apprenticeMap），
 // 不包含任何编造人物或统计数字；数字取自 meta 与运行时统计。
 
@@ -81,6 +81,7 @@ export default function RealLineagePreview() {
           <div className="rlp-photo rlp-photo--master">
             {master.portrait && (
               <img src={master.portrait} alt={master.name} loading="lazy"
+                onLoad={e => { e.currentTarget.classList.add('is-loaded'); }}
                 onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
             )}
             <span aria-hidden="true">{master.name.slice(0, 1)}</span>
@@ -105,6 +106,7 @@ export default function RealLineagePreview() {
               <div className="rlp-photo">
                 {d.portrait && (
                   <img src={d.portrait} alt="" loading="lazy"
+                    onLoad={e => { e.currentTarget.classList.add('is-loaded'); }}
                     onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
                 )}
                 <span aria-hidden="true">{d.name.slice(0, 1)}</span>

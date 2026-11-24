@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import CommandPalette from './CommandPalette';
 import { useData } from '../lib/useData';
+import { useExitVisible } from '../lib/motion';
 
 const MENU = [
   { n: '01', to: '/', label: '首页', end: true },
@@ -14,6 +15,9 @@ const MENU = [
 export default function NavBar() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // 弹层退场：open=false 后保留挂载 200ms 播退场动画
+  const palette = useExitVisible(paletteOpen);
+  const menu = useExitVisible(menuOpen);
   const nav = useNavigate();
   const { data } = useData();
 
@@ -74,8 +78,8 @@ export default function NavBar() {
         </nav>
       </header>
 
-      {menuOpen && (
-        <div className="mobile-menu">
+      {menu.visible && (
+        <div className={`mobile-menu ${menu.leaving ? 'is-leaving' : ''}`}>
           <button className="close" onClick={() => setMenuOpen(false)} aria-label="关闭">×</button>
           {MENU.map(m => (
             <Link key={m.to} to={m.to} onClick={() => setMenuOpen(false)}>
@@ -85,8 +89,9 @@ export default function NavBar() {
         </div>
       )}
 
-      {paletteOpen && (
+      {palette.visible && (
         <CommandPalette
+          leaving={palette.leaving}
           onClose={() => setPaletteOpen(false)}
           onSelect={(chefId) => {
             setPaletteOpen(false);

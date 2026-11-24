@@ -54,6 +54,7 @@ export default function ChefProfile({ chef, data, onSelect, onClose, variant = '
         <div className="cp-avatar">
           {chef.portrait && (
             <img src={chef.portrait} alt="" loading="lazy"
+              onLoad={(e) => { e.currentTarget.classList.add('is-loaded'); }}
               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
           )}
           <span>{chef.name.slice(0, 1)}</span>

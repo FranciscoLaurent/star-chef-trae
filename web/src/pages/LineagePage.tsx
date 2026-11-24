@@ -292,6 +292,7 @@ export default function LineagePage() {
                       <div className="pc-portrait">
                         {c.portrait && (
                           <img src={c.portrait} alt="" loading="lazy"
+                            onLoad={(e) => { e.currentTarget.classList.add('is-loaded'); }}
                             onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
                         )}
                         <span>{c.name.slice(0, 1)}</span>

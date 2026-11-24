@@ -3,7 +3,7 @@ import {
   loadPosts, savePosts, loadLiked, saveLiked, makeId, relativeTime, SEED_POSTS,
   type Post, type Comment,
 } from '../lib/community';
-import { usePageReveal, useStaggerIn } from '../lib/motion';
+import { usePageReveal, useStaggerIn, useExitVisible } from '../lib/motion';
 
 /** composer 菜系 chips：固定 9 项，不随帖子变化 */
 const COMPOSER_CUISINES = ['川', '粤', '鲁', '淮扬', '湘', '苏', '浙', '闽', '京'];
@@ -16,6 +16,11 @@ export default function CommunityPage() {
   const [detail, setDetail] = useState<Post | null>(null);
   // 评论草稿存在页面级：临时收起详情（Esc/返回）不丢正在写的评论，重开仍在
   const [commentDraft, setCommentDraft] = useState({ author: '', body: '' });
+  // 弹层退场：关闭后保留挂载播 200ms 退场动画（有来有去）
+  const composingView = useExitVisible(composing);
+  const detailView = useExitVisible(!!detail);
+  // 详情关闭动画期间仍需渲染原内容
+  const detailShown = detailView.visible ? detail : null;
   usePageReveal();
 
   // 详情层支持 Escape 收起；正在用输入法打字（组合态）时 Esc 属于取消候选词，不视为关闭
@@ -125,34 +130,36 @@ export default function CommunityPage() {
 
       <button className="comm-fab" onClick={() => setComposing(true)} aria-label="发帖" title="发帖">＋</button>
 
-      {composing && <ComposeModal onCancel={() => setComposing(false)} onSubmit={publish} />}
+      {composingView.visible && (
+        <ComposeModal leaving={composingView.leaving} onCancel={() => setComposing(false)} onSubmit={publish} />
+      )}
 
-      {detail && (
-        <div className="comm-detail">
+      {detailShown && (
+        <div className={`comm-detail ${detailView.leaving ? 'is-leaving' : ''}`}>
           <div className="detail-bar">
             <button className="ex-btn" onClick={() => setDetail(null)}>← 返回社区</button>
-            <span className="hint-line">{relativeTime(detail.createdAt)}</span>
+            <span className="hint-line">{relativeTime(detailShown.createdAt)}</span>
           </div>
           <div className="detail-inner">
             <div className="post-head">
-              <div className="post-avatar">{detail.author.slice(0, 1)}</div>
+              <div className="post-avatar">{detailShown.author.slice(0, 1)}</div>
               <div>
-                <div className="post-author">{detail.author}</div>
-                <div className="post-role">{detail.role}{detail.city ? ` · ${detail.city}` : ''}</div>
+                <div className="post-author">{detailShown.author}</div>
+                <div className="post-role">{detailShown.role}{detailShown.city ? ` · ${detailShown.city}` : ''}</div>
               </div>
-              <span className="post-cuisine">{detail.cuisine}菜</span>
+              <span className="post-cuisine">{detailShown.cuisine}菜</span>
             </div>
-            <h1 className="detail-title">{detail.title}</h1>
-            <div className="detail-body">{detail.body}</div>
+            <h1 className="detail-title">{detailShown.title}</h1>
+            <div className="detail-body">{detailShown.body}</div>
 
             <div className="detail-actions">
-              <button className="cta" onClick={e => toggleLike(detail.id, e as any)}>
-                {liked.includes(detail.id) ? '已赞同' : '赞同'} · {detail.likes}
+              <button className="cta" onClick={e => toggleLike(detailShown.id, e as any)}>
+                {liked.includes(detailShown.id) ? '已赞同' : '赞同'} · {detailShown.likes}
               </button>
-              <span className="hint-line">评论 {detail.comments.length} 条</span>
+              <span className="hint-line">评论 {detailShown.comments.length} 条</span>
             </div>
 
-            <CommentList post={detail} onAdd={addComment} draft={commentDraft} onDraft={setCommentDraft} />
+            <CommentList post={detailShown} onAdd={addComment} draft={commentDraft} onDraft={setCommentDraft} />
           </div>
         </div>
       )}
@@ -201,9 +208,10 @@ function CommentList({ post, onAdd, draft, onDraft }: {
   );
 }
 
-function ComposeModal({ onCancel, onSubmit }: {
+function ComposeModal({ onCancel, onSubmit, leaving }: {
   onCancel: () => void;
   onSubmit: (p: Omit<Post, 'id' | 'createdAt' | 'likes' | 'comments' | 'seed'>) => void;
+  leaving?: boolean;
 }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -227,7 +235,7 @@ function ComposeModal({ onCancel, onSubmit }: {
   }, [hasDraft, onCancel]);
 
   return (
-    <div className="comm-modal" onClick={e => { if (e.target === e.currentTarget) guardClose(onCancel); }}>
+    <div className={`comm-modal ${leaving ? 'is-leaving' : ''}`} onClick={e => { if (e.target === e.currentTarget) guardClose(onCancel); }}>
       <div className="cm-card">
         <div className="cm-head">
           <div>

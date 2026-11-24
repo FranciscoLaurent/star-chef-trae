@@ -6,9 +6,11 @@ import type { Chef } from '../lib/types';
 interface Props {
   onClose: () => void;
   onSelect: (chefId: string) => void;
+  /** 退场动画进行中（保持挂载由父级 useExitVisible 控制） */
+  leaving?: boolean;
 }
 
-export default function CommandPalette({ onClose, onSelect }: Props) {
+export default function CommandPalette({ onClose, onSelect, leaving }: Props) {
   const { data, loading } = useData();
   const [query, setQuery] = useState('');
   const [activeIdx, setActiveIdx] = useState(0);
@@ -30,7 +32,7 @@ export default function CommandPalette({ onClose, onSelect }: Props) {
   useEffect(() => { setActiveIdx(0); }, [query]);
 
   return (
-    <div className="palette-backdrop" onClick={onClose}>
+    <div className={`palette-backdrop ${leaving ? 'is-leaving' : ''}`} onClick={onClose}>
       <div className="palette" onClick={e => e.stopPropagation()}>
         <input
           ref={inputRef}
@@ -71,6 +73,7 @@ function AvatarMini({ chef }: { chef: Chef }) {
     return (
       <div className="avatar">
         <img src={chef.portrait} alt="" loading="lazy"
+          onLoad={(e) => { e.currentTarget.classList.add('is-loaded'); }}
           onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
       </div>
     );

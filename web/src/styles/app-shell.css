@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    星厨传承 Web — App shell
    在 design-system.css（原站 CSS 原样迁移）之上，只补原站没有的壳层组件
    ============================================================ */
@@ -11,7 +11,7 @@
 }
 
 /* ---------- 页面切换 ---------- */
-.page-enter { animation: pageIn .45s cubic-bezier(.22, .61, .36, 1) both; }
+.page-enter { animation: pageIn .45s var(--ease-out) both; }
 @keyframes pageIn {
   from { opacity: 0; transform: translateY(14px); }
   to { opacity: 1; transform: translateY(0); }
@@ -167,7 +167,7 @@
   padding: 24px 22px 44px;
   z-index: 101;
   box-shadow: -12px 0 40px -12px rgba(18, 16, 14, .25);
-  animation: drawerIn .34s cubic-bezier(.22, .61, .36, 1) both;
+  animation: drawerIn .34s var(--ease-out) both;
 }
 @keyframes drawerIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
 .drawer-close {
@@ -207,7 +207,7 @@
 
 /* ---------- 首屏 3 行标题的 GSAP 显示基线 ---------- */
 .hero h1 .line span { transform: translateY(110%); }
-.hero h1 .line.is-in span { transform: translateY(0); transition: transform .9s cubic-bezier(.19, 1, .22, 1); }
+.hero h1 .line.is-in span { transform: translateY(0); transition: transform .9s var(--ease-out); }
 .hero h1 .line:nth-child(2) span { transition-delay: .12s; }
 .hero h1 .line:nth-child(3) span { transition-delay: .24s; }
 
@@ -420,7 +420,7 @@
 .face-card{display:block}
 .face-photo{position:relative;aspect-ratio:3/4;overflow:hidden;background:var(--paper-2);border:1px solid var(--rule-strong);box-shadow:4px 4px 0 rgba(18,16,14,.08)}
 .face-photo span{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--serif);font-size:44px;color:var(--dust);z-index:1}
-.face-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:2;filter:sepia(.16) contrast(.95);transition:transform .5s cubic-bezier(.6,.0,.2,1)}
+.face-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:2;filter:sepia(.16) contrast(.95);transition:transform .5s var(--ease-io)}
 .face-card:hover .face-photo img{transform:scale(1.04)}
 .face-photo::after{content:'';position:absolute;inset:0;z-index:3;box-shadow:inset 0 0 0 2px rgba(237,232,219,.5);pointer-events:none}
 .face-name{font-family:var(--serif);font-size:18px;margin-top:10px}
