@@ -38,7 +38,8 @@ export function usePageReveal(deps: unknown[] = []) {
 
 /** 一组卡片/行错峰入场（用于师承谱、岗位列表、社区流）
  *  onlyNew（默认）：只动画新挂载的元素——列表增项时只有新增项入场，
- *  已在场的元素原地不动（换排序/补数据不再整列表重播）。 */
+ *  已在场的元素原地不动（换排序/补数据不再整列表重播）。
+ *  大列表封顶总错峰时长（.4s），无论多少张卡都不会让用户等秒级。 */
 export function useStaggerIn(selector: string, deps: unknown[] = [], opts: { onlyNew?: boolean } = {}) {
   const { onlyNew = true } = opts;
   useEffect(() => {
@@ -47,10 +48,16 @@ export function useStaggerIn(selector: string, deps: unknown[] = [], opts: { onl
     const els = onlyNew ? all.filter(el => !el.dataset.moIn) : all;
     if (!els.length) return;
     els.forEach(el => { el.dataset.moIn = '1'; });
+    // 错峰间隔封顶：小列表 .035s/张，大列表压缩到总计 ≤ .4s
+    const each = els.length > 1 ? Math.min(.035, .4 / els.length) : 0;
     const tween = gsap.fromTo(els,
       { opacity: 0, y: 16 },
-      { opacity: 1, y: 0, duration: .46, stagger: .035, ease: 'power2.out', overwrite: true });
-    return () => { tween.kill(); };
+      { opacity: 1, y: 0, duration: .46, stagger: each, ease: 'power2.out', overwrite: true });
+    return () => {
+      // 被打断（依赖变化/StrictMode 双调用/卸载）时直接落至终态，绝不停在半透明
+      tween.kill();
+      gsap.set(els, { opacity: 1, y: 0 });
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 }
