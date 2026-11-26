@@ -3,7 +3,7 @@
   "meta": {
     "total": 1238,
     "withMaster": 262,
-    "withPortrait": 853,
+    "withPortrait": 854,
     "withSignature": 381,
     "cuisines": 43,
     "schools": 8,
@@ -2675,7 +2675,7 @@
       "position": "食家·作家",
       "restaurant": "蔡澜美食坊",
       "bio": "祖籍广东潮州，生于新加坡，定居香港。作家、美食家、电影监制，与金庸、倪匡、黄霑并称'香港四大才子'。著作 200 余部，主持多个饮食节目，对粤菜及潮州菜在华人圈及海外的传播影响深远（非厨师身份的文化代表）。",
-      "portrait": null,
+      "portrait": "/portraits/baike-y040.jpg",
       "signatureDishes": [
         "美食专栏与节目"
       ],
